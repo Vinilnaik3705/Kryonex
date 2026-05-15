@@ -56,10 +56,8 @@ const MainLayout = ({ children }) => {
                 <div className="p-5">
                     {/* Logo */}
                     <div className="flex items-center justify-between">
-                        <Link to="/dashboard" className="flex items-center gap-2.5 group">
-                            <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center border border-accent/20 group-hover:border-accent/40 transition-all">
-                                <img src="/logo.png" alt="Kryonex Logo" className="w-6 h-6 object-contain" />
-                            </div>
+                        <Link to="/dashboard" className="flex items-center gap-3 group">
+                            <img src="/logo.png" alt="Kryonex Logo" className="w-9 h-9 object-contain" />
                             <span className="text-xl font-extrabold tracking-tight text-white group-hover:text-accent transition-colors">Kryonex</span>
                         </Link>
 
