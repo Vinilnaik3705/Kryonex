@@ -15,8 +15,8 @@ export function CoinLogoProvider({ children }) {
 
   useEffect(() => {
     // Check localStorage cache first (avoid re-fetching on every page load)
-    const cached = localStorage.getItem('tradesim_coin_logos');
-    const cachedTime = localStorage.getItem('tradesim_coin_logos_time');
+    const cached = localStorage.getItem('kryonex_coin_logos');
+    const cachedTime = localStorage.getItem('kryonex_coin_logos_time');
     const SIX_HOURS = 6 * 60 * 60 * 1000;
 
     if (cached && cachedTime && Date.now() - parseInt(cachedTime) < SIX_HOURS) {
@@ -29,8 +29,8 @@ export function CoinLogoProvider({ children }) {
       .then(r => r.data)
       .then(data => {
         setLogos({ ...data, ...MANUAL_OVERRIDES });
-        localStorage.setItem('tradesim_coin_logos', JSON.stringify(data));
-        localStorage.setItem('tradesim_coin_logos_time', Date.now().toString());
+        localStorage.setItem('kryonex_coin_logos', JSON.stringify(data));
+        localStorage.setItem('kryonex_coin_logos_time', Date.now().toString());
       })
       .catch(console.error);
   }, []);

@@ -404,7 +404,7 @@ export default function Trade() {
         indicators: { sma: false, ema: false }
     });
 
-    const chartLayoutStorageKey = buildUserScopedStorageKey('tradesim_chart_layout', user?.id);
+    const chartLayoutStorageKey = buildUserScopedStorageKey('kryonex_chart_layout', user?.id);
 
     const [configs, setConfigs] = useState(() => {
         const saved = localStorage.getItem(chartLayoutStorageKey);

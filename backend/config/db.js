@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const connectDB = async () => {
     try {
-        let uri = process.env.MONGO_URI || process.env.MONGODB_URI || 'mongodb://localhost:27017/tradesim';
+        let uri = process.env.MONGO_URI || process.env.MONGODB_URI || 'mongodb://localhost:27017/kryonex';
 
         if (uri) uri = uri.trim(); // Trim whitespace
 

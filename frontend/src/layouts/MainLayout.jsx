@@ -58,7 +58,7 @@ const MainLayout = ({ children }) => {
                     <div className="flex items-center justify-between">
                         <h1 className="text-xl font-extrabold tracking-tight text-accent flex items-center gap-1.5">
                             <span className="text-accent/60">⬡</span>
-                            TradeSim
+                            Kryonex
                         </h1>
 
                     </div>
@@ -109,7 +109,7 @@ const MainLayout = ({ children }) => {
             <div className="md:hidden fixed top-0 w-full bg-black/95 backdrop-blur-md z-30 border-b border-[rgba(56,189,248,0.12)]">
                 <div className="p-3 sm:p-4 flex justify-between items-center w-full box-border">
                     <span className="font-extrabold text-accent flex items-center gap-1.5" style={{ fontSize: 'clamp(14px, 4vw, 18px)' }}>
-                        <span className="text-accent/60 opacity-50">⬡</span> TradeSim
+                        <span className="text-accent/60 opacity-50">⬡</span> Kryonex
                     </span>
                     <div className="flex items-center gap-2 sm:gap-3">
                         <CurrencyToggle />

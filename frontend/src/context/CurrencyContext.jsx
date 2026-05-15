@@ -4,7 +4,7 @@ const CurrencyContext = createContext();
 
 export function CurrencyProvider({ children }) {
   const [currency, setCurrency] = useState(
-    () => localStorage.getItem('tradesim_currency') || 'USD'
+    () => localStorage.getItem('kryonex_currency') || 'USD'
   );
   const [usdToInr, setUsdToInr] = useState(83.5);  // fallback rate
 
@@ -24,7 +24,7 @@ export function CurrencyProvider({ children }) {
 
   const handleSetCurrency = (c) => {
     setCurrency(c);
-    localStorage.setItem('tradesim_currency', c);
+    localStorage.setItem('kryonex_currency', c);
   };
 
   return (

@@ -168,7 +168,7 @@ export default function CommandPalette() {
                                     <span><span className="text-slate-300">↑↓</span> to navigate</span>
                                     <span><span className="text-slate-300">↵</span> to select</span>
                                 </div>
-                                <span>Design by TradeSim</span>
+                                <span>Design by Kryonex</span>
                             </div>
                         </div>
                     </motion.div>

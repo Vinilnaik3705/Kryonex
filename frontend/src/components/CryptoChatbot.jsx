@@ -178,7 +178,7 @@ export default function CryptoChatbot() {
     if (isOpen && messages.length === 0) {
       const welcome = {
         role: 'assistant',
-        content: `Hey! I'm **CryptoSense** — your AI crypto analyst.\n\nAsk me about **any coin** and I'll check:\n- Latest news & political events\n- Price trends (24h / 7d / 1yr)\n- Geopolitical & macro factors\n- War/crisis impact on crypto\n- Whether it's safe to invest right now\n\nJust type a coin name or ask me anything.`,
+        content: `Hey! I'm **Kryonex AI** — your professional crypto analyst.\n\nAsk me about **any coin** and I'll check:\n- Latest news & political events\n- Price trends (24h / 7d / 1yr)\n- Geopolitical & macro factors\n- War/crisis impact on crypto\n- Whether it's safe to invest right now\n\nJust type a coin name or ask me anything.`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages([welcome]);
@@ -367,7 +367,7 @@ export default function CryptoChatbot() {
                 <Bot size={18} className="text-white" />
               </div>
               <div>
-                <p className="text-white text-[15px] font-bold leading-none">CryptoSense</p>
+                <p className="text-white text-[15px] font-bold leading-none">Kryonex AI</p>
                 <div className="flex items-center gap-1.5 mt-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">

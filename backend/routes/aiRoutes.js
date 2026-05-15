@@ -5,7 +5,7 @@ const router = express.Router();
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
-const SYSTEM_PROMPT = `You are CryptoSense, an elite cryptocurrency analyst AI embedded in the TradeSim trading platform.
+const SYSTEM_PROMPT = `You are Kryonex AI, an elite cryptocurrency analyst AI embedded in the Kryonex trading platform.
 
 Your job: help users decide if a crypto coin is SAFE or RISKY to invest in right now.
 

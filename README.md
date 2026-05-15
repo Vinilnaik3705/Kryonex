@@ -1,6 +1,6 @@
-# ⬡ TradeSim - Advanced Trading Simulation Platform
+# ⬡ Kryonex - Advanced Trading Simulation Platform
 
-TradeSim is a high-performance, real-time trading simulation platform designed to help users master the financial markets without risk. Featuring a mobile-first responsive design, advanced AI analysis, and professional-grade data visualization.
+Kryonex is a high-performance, real-time trading simulation platform designed to help users master the financial markets without risk. Featuring a mobile-first responsive design, advanced AI analysis, and professional-grade data visualization.
 
 ## ✨ Core Features
 
@@ -39,8 +39,8 @@ TradeSim is a high-performance, real-time trading simulation platform designed t
 
 1.  **Clone the Repository**
     ```bash
-    git clone https://github.com/Vinilnaik3705/TradeSim.git
-    cd TradeSim
+    git clone https://github.com/Vinilnaik3705/Kryonex.git
+    cd Kryonex
     ```
 
 2.  **Backend Setup**

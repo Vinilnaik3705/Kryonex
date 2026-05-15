@@ -48,7 +48,7 @@ app.get("/health", (req, res) => {
 });
 
 app.get("/", (req, res) => {
-    res.send("TradeSim Backend Running ✅");
+    res.send("Kryonex Backend Running ✅");
 });
 
 app.use("/api/crypto", cryptoRoutes);
