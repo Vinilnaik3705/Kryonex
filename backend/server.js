@@ -24,6 +24,8 @@ app.use(cors({
     origin: [
         "http://localhost:5173",
         "http://localhost:3000",
+        "https://kryonex.vercel.app",
+        /^https:\/\/.*\.vercel\.app$/,
         "https://tradesim-9yh.pages.dev",
         /^https:\/\/.*\.tradesim-9yh\.pages\.dev$/
     ],
