@@ -277,7 +277,6 @@ const Landing = () => {
                                     <li><Link to={user ? "/markets" : "/login"} className="hover:text-[#2962FF] transition-colors">Live Markets</Link></li>
                                     <li><Link to={user ? "/heatmap" : "/login"} className="hover:text-[#2962FF] transition-colors">Heatmaps</Link></li>
                                     <li><Link to={user ? "/trade/BTC" : "/login"} className="hover:text-[#2962FF] transition-colors">Advanced Trade</Link></li>
-                                    <li><Link to={user ? "/wallet" : "/login"} className="hover:text-[#2962FF] transition-colors">Wallet</Link></li>
                                 </ul>
                             </div>
 

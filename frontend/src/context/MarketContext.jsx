@@ -1,42 +1,64 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useAuth } from './AuthContext';
+import { buildUserScopedStorageKey } from '../utils/storage';
 
 const MarketContext = createContext();
 
 export const useMarket = () => useContext(MarketContext);
 
 export const MarketProvider = ({ children }) => {
-    // Market Type: 'crypto' or 'stock'
-    const [marketType, setMarketType] = useState('crypto');
+    const { user } = useAuth();
+    const marketType = 'crypto';
+    const watchlistStorageKey = buildUserScopedStorageKey('watchlist', user?.id);
 
     // Watchlist: Set of Asset IDs - Load from localStorage
-    const [watchlist, setWatchlist] = useState(() => {
-        try {
-            const saved = localStorage.getItem('watchlist');
-            return saved ? new Set(JSON.parse(saved)) : new Set();
-        } catch {
-            return new Set();
-        }
-    });
+    const [watchlist, setWatchlist] = useState(new Set());
+    const [storageReady, setStorageReady] = useState(false);
 
     // Alerts: Array of alert objects
     const [alerts, setAlerts] = useState([]);
 
+    useEffect(() => {
+        let isActive = true;
+
+        setStorageReady(false);
+
+        try {
+            const saved = localStorage.getItem(watchlistStorageKey);
+            const nextWatchlist = saved ? new Set(JSON.parse(saved)) : new Set();
+
+            if (saved === null) {
+                localStorage.setItem(watchlistStorageKey, JSON.stringify([]));
+            }
+
+            if (isActive) {
+                setWatchlist(nextWatchlist);
+                setStorageReady(true);
+            }
+        } catch {
+            if (isActive) {
+                setWatchlist(new Set());
+                setStorageReady(true);
+            }
+        }
+
+        return () => {
+            isActive = false;
+        };
+    }, [watchlistStorageKey]);
+
     // Sync watchlist to localStorage whenever it changes
     useEffect(() => {
+        if (!storageReady) return;
+
         try {
-            localStorage.setItem('watchlist', JSON.stringify(Array.from(watchlist)));
+            localStorage.setItem(watchlistStorageKey, JSON.stringify(Array.from(watchlist)));
         } catch (error) {
             console.error('Failed to save watchlist:', error);
         }
-    }, [watchlist]);
+    }, [watchlist, storageReady, watchlistStorageKey]);
 
-    const toggleMarketType = (type) => {
-        if (type) {
-            setMarketType(type);
-        } else {
-            setMarketType(prev => prev === 'crypto' ? 'stock' : 'crypto');
-        }
-    };
+    const toggleMarketType = () => {};
 
     const addToWatchlist = (assetId) => {
         setWatchlist(prev => {

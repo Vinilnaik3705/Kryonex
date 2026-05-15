@@ -11,22 +11,26 @@ export default {
         secondary: "var(--color-secondary)",
         tertiary: "var(--color-hover)",
         accent: "var(--color-accent)",
-        success: "#4ADE80",
-        danger: "#F87171",
-        warning: "#FBBF24",
+        success: "#22d3a0",
+        danger: "#f43f5e",
+        warning: "#f59e0b",
         border: "var(--color-border)",
 
         // Semantic color mappings
         card: "var(--color-card)",
         "text-main": "var(--color-text)",
         "text-muted": "var(--color-text-muted)",
+        "text-dim": "var(--color-text-dim)",
       },
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
+        sans: ['Syne', 'Inter', 'sans-serif'],
+        heading: ['Syne', 'sans-serif'],
+        mono: ['JetBrains Mono', 'monospace'],
       },
       animation: {
         'float': 'float 6s ease-in-out infinite',
         'fade-in-up': 'fadeInUp 0.8s ease-out forwards',
+        'pulse-ring': 'pulseRing 2s ease-out infinite',
       },
       keyframes: {
         float: {
@@ -36,7 +40,11 @@ export default {
         fadeInUp: {
           '0%': { opacity: '0', transform: 'translateY(20px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
-        }
+        },
+        pulseRing: {
+          '0%': { transform: 'scale(1)', opacity: '0.6' },
+          '100%': { transform: 'scale(1.8)', opacity: '0' },
+        },
       }
     },
   },

@@ -1,21 +1,35 @@
 import React, { useEffect, useState } from 'react';
 import MainLayout from '../layouts/MainLayout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { ArrowUpRight, ArrowDownRight, DollarSign, Wallet, TrendingUp, TrendingDown, Activity, Shield, Zap, ArrowRight, RefreshCw } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, DollarSign, Wallet, TrendingUp, TrendingDown, Activity, Shield, Zap, ArrowRight, MessageCircle } from 'lucide-react';
 import BentoCard from '../components/ui/BentoCard';
+import CoinIcon from '../components/ui/CoinIcon';
+import useWalletAndPortfolio from '../hooks/useWalletAndPortfolio';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import MarketToggle from '../components/ui/MarketToggle';
-import { useMarket } from '../context/MarketContext';
+import CryptoChatbot from '../components/CryptoChatbot';
 import { useAuth } from '../context/AuthContext';
 import API_BASE_URL from '../config/api';
+import { formatPrice } from '../utils/formatPrice';
+import { useCurrency } from '../context/CurrencyContext';
+import { formatAmount } from '../utils/formatCurrency';
 
-const portfolioData = [
-    { name: 'BTC', value: 45, color: '#F59E0B' }, // Orange
-    { name: 'ETH', value: 30, color: '#3B82F6' }, // Blue
-    { name: 'TSLA', value: 15, color: '#EF4444' }, // Red
-    { name: 'AAPL', value: 10, color: '#10B981' }, // Green
-];
+const ASSET_COLORS = {
+    'BTC': '#F59E0B',
+    'ETH': '#3B82F6',
+    'TSLA': '#EF4444',
+    'AAPL': '#10B981',
+    'SOL': '#9333EA',
+    'MSFT': '#06B6D4',
+    'NVDA': '#EC4899',
+    'GOOGL': '#8B5CF6',
+    'AMZN': '#14B8A6'
+};
+
+const getAssetColor = (symbol) => {
+    return ASSET_COLORS[symbol?.toUpperCase()] || `hsl(${Math.floor(Math.random() * 360)}, 70%, 60%)`;
+};
 
 // Helper function to convert timestamp to "X hours ago" format
 function getTimeAgo(timestamp) {
@@ -42,117 +56,76 @@ const NewsItem = ({ id, title, source, time, category, url }) => {
         'Markets': 'bg-green-500/20 text-green-400',
         'Commodities': 'bg-yellow-500/20 text-yellow-400',
         'Crypto': 'bg-purple-500/20 text-purple-400',
-        'Global': 'bg-cyan-500/20 text-cyan-400',
-        'Stocks': 'bg-pink-500/20 text-pink-400'
+        'Global': 'bg-cyan-500/20 text-cyan-400'
     };
-
-    const handleClick = () => {
-        if (url && url !== '#') {
-            window.open(url, '_blank', 'noopener,noreferrer');
-        }
-    };
-
     return (
-        <div
-            onClick={handleClick}
-            className="p-4 bg-tertiary/30 border border-border rounded-lg hover:bg-tertiary/50 transition-all cursor-pointer group"
-        >
+        <a href={url || '#'} target="_blank" rel="noopener noreferrer" className="p-4 block bg-tertiary/30 border border-border rounded-lg hover:bg-tertiary/50 transition-all group cursor-pointer">
             <div className="flex items-start justify-between gap-3">
                 <div className="flex-1">
-                    <h3 className="font-bold text-text-main text-base group-hover:text-accent transition-colors line-clamp-2">
-                        {title}
-                    </h3>
+                    <h3 className="font-bold text-text-main text-base group-hover:text-accent transition-colors line-clamp-2">{title}</h3>
                     <div className="flex items-center gap-2 mt-2">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${categoryColors[category] || 'bg-slate-700 text-slate-300'}`}>
-                            {category}
-                        </span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${categoryColors[category] || 'bg-slate-700 text-slate-300'}`}>{category}</span>
                         <span className="text-xs text-text-muted">{source}</span>
                         <span className="text-xs text-text-muted">•</span>
                         <span className="text-xs text-text-muted">{time}</span>
                     </div>
                 </div>
             </div>
-        </div>
+        </a>
     );
 };
 
 export default function Dashboard() {
+    const navigate = useNavigate();
     const { user } = useAuth();
-    const { marketType } = useMarket();
+    const { walletBalance, calculatePortfolioValue, calculateTotalPnL, getHoldingsWithValues } = useWalletAndPortfolio();
+        const { currency, convert } = useCurrency();
     const [marketData, setMarketData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [news, setNews] = useState([]);
     const [newsLoading, setNewsLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
-    // Generate mock chart data
+    // Calculate values
+    const portfolioValue = calculatePortfolioValue();
+    const totalPnL = calculateTotalPnL();
+    const totalAssets = walletBalance + portfolioValue;
+    const pnlPercent = totalAssets > 0 ? (totalPnL / (totalAssets - totalPnL)) * 100 : 0;
 
+    // Build data from real holdings
+    const allHoldings = getHoldingsWithValues();
 
-    // Fetch market data based on toggle
+    // Fetch crypto market data
     useEffect(() => {
         const fetchDashboardData = async () => {
             try {
                 setLoading(true);
-                if (marketType === 'crypto') {
-                    // Fetch crypto assets
-                    const response = await axios.get(`${API_BASE_URL}/crypto/market-cap?limit=5`);
-                    if (response.data.success) {
-                        const formatted = response.data.data.map(item => ({
-                            id: item.symbol,
-                            name: item.baseAsset,
-                            symbol: item.baseAsset,
-                            price: item.price,
-                            change: item.changePercent
-                        }));
-                        setMarketData(formatted);
-                    }
-                } else {
-                    // Fetch stock assets
-                    const response = await axios.get(`${API_BASE_URL}/stocks/top?limit=5`);
-                    if (response.data.success) {
-                        const formatted = response.data.data.map(item => ({
-                            id: item.symbol,
-                            name: item.name,
-                            symbol: item.symbol,
-                            price: item.price,
-                            change: item.changePercent
-                        }));
-                        setMarketData(formatted);
-                    }
+                const response = await axios.get(`${API_BASE_URL}/crypto/market-cap?limit=5`);
+                if (response.data.success) {
+                    const formatted = response.data.data.map(item => ({
+                        id: item.symbol,
+                        name: item.baseAsset,
+                        symbol: item.baseAsset,
+                        price: item.price,
+                        change: item.changePercent
+                    }));
+                    setMarketData(formatted);
                 }
             } catch (error) {
                 console.error("Dashboard data fetch failed", error);
-                // Fallback mock data
-                if (marketType === 'crypto') {
-                    setMarketData([
-                        { id: 'BTC', name: 'Bitcoin', symbol: 'BTC', price: 45230.50, change: 2.5 },
-                        { id: 'ETH', name: 'Ethereum', symbol: 'ETH', price: 3120.20, change: -1.2 },
-                        { id: 'SOL', name: 'Solana', symbol: 'SOL', price: 98.40, change: 12.5 },
-                        { id: 'ADA', name: 'Cardano', symbol: 'ADA', price: 0.55, change: -0.5 },
-                        { id: 'DOT', name: 'Polkadot', symbol: 'DOT', price: 7.20, change: 3.2 }
-                    ]);
-                } else {
-                    setMarketData([
-                        { id: 'AAPL', name: 'Apple Inc.', symbol: 'AAPL', price: 178.50, change: 1.5 },
-                        { id: 'MSFT', name: 'Microsoft', symbol: 'MSFT', price: 380.20, change: 0.8 },
-                        { id: 'GOOGL', name: 'Alphabet', symbol: 'GOOGL', price: 140.30, change: -0.5 },
-                        { id: 'AMZN', name: 'Amazon', symbol: 'AMZN', price: 155.40, change: 2.1 },
-                        { id: 'TSLA', name: 'Tesla', symbol: 'TSLA', price: 245.60, change: 3.5 }
-                    ]);
-                }
             } finally {
                 setLoading(false);
             }
         };
 
         fetchDashboardData();
-    }, [marketType]); // Re-fetch when market type changes
+    }, []);
 
     // Fetch real-time news
     const fetchNews = async () => {
         try {
             setRefreshing(true);
-            const response = await axios.get(`${API_BASE_URL}/news?category=all&limit=10`);
+            const response = await axios.get(`${API_BASE_URL}/news?category=crypto&limit=10`);
             if (response.data.success) {
                 setNews(response.data.data);
             }
@@ -169,82 +142,148 @@ export default function Dashboard() {
         fetchNews();
     }, []);
 
-    // Auto-refresh news every 5 minutes
+    // Auto-refresh news every 1 minute
     useEffect(() => {
         const interval = setInterval(() => {
             fetchNews();
-        }, 5 * 60 * 1000); // 5 minutes
+        }, 60 * 1000); // 1 minute
 
         return () => clearInterval(interval);
     }, []);
 
     return (
         <MainLayout>
-            <div className="space-y-6 sm:space-y-8">
+            <div className="space-y-5">
                 {/* Header */}
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 px-4 sm:px-0">
                     <div>
-                        <h2 className="text-2xl font-bold bg-gradient-to-r from-text-main to-text-muted bg-clip-text text-transparent">Dashboard</h2>
-                        <p className="text-text-muted mt-1 text-sm">Market Overview & Analysis</p>
+                        <h2 className="text-xl font-extrabold text-white">Dashboard</h2>
+                        <p className="text-[rgba(255,255,255,0.3)] mt-0.5 text-[12px]">Crypto market overview & analysis</p>
                     </div>
                     {user?.role === 'admin' && (
-                        <Link to="/payment" className="bg-accent hover:bg-sky-500 text-white text-base px-6 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-accent/20 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] w-full sm:w-auto">
-                            <Wallet size={18} /> Add Funds (Admin)
+                        <Link to="/payment" className="bg-accent hover:bg-sky-400 text-black text-sm px-5 py-2 rounded-lg font-bold transition-all flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] w-full sm:w-auto">
+                            <Wallet size={16} /> Add Funds (Admin)
                         </Link>
                     )}
                 </div>
 
-                {/* Bento Grid Layout - Row 1 */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                    {/* Balance Card */}
-                    <BentoCard icon={DollarSign} title="Total Balance" delay={0.1}>
-                        <div className="mt-2">
-                            <h3 className="text-4xl font-bold text-text-main mb-2">$24,500.00</h3>
-                            <div className="flex items-center text-success bg-success/10 w-fit px-3 py-1 rounded-lg">
-                                <ArrowUpRight size={16} className="mr-1" />
-                                <span className="font-bold text-sm">+12.5%</span>
-                            </div>
+                {/* Stat Cards Grid - Responsive fix */}
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(2, 1fr)',
+                    gap: 10,
+                    padding: '0 16px',
+                    width: '100%',
+                    boxSizing: 'border-box',
+                }} className="lg:grid-cols-4 lg:px-0 lg:gap-3">
+                    {/* AVAILABLE BALANCE */}
+                    <div style={{
+                        background: 'rgba(255,255,255,0.04)',
+                        borderRadius: 14,
+                        padding: '14px 16px',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        borderTop: '2px solid #38bdf8',
+                        minWidth: 0,
+                        overflow: 'hidden',
+                    }}>
+                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.08em', marginBottom: 8, fontWeight: 700 }}>
+                            AVAILABLE BALANCE
                         </div>
-                    </BentoCard>
+                        <div style={{
+                            fontSize: 'clamp(14px, 4.5vw, 22px)',
+                            fontWeight: 800,
+                            color: '#fff',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            fontFamily: 'JetBrains Mono, monospace'
+                        }}>
+                            {formatAmount(convert(walletBalance), currency)}
+                        </div>
+                        <div style={{ fontSize: 11, color: '#38bdf8', marginTop: 4, fontWeight: 600 }}>Cash ready</div>
+                    </div>
 
-                    {/* Portfolio Value */}
-                    <BentoCard icon={Activity} title="Portfolio Value" delay={0.2}>
-                        <div className="mt-2">
-                            <h3 className="text-4xl font-bold text-text-main mb-2">$18,240.50</h3>
-                            <div className="flex items-center text-success bg-success/10 w-fit px-3 py-1 rounded-lg">
-                                <ArrowUpRight size={16} className="mr-1" />
-                                <span className="font-bold text-sm">+8.2%</span>
-                            </div>
+                    {/* PORTFOLIO VALUE */}
+                    <div style={{
+                        background: 'rgba(255,255,255,0.04)',
+                        borderRadius: 14,
+                        padding: '14px 16px',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        borderTop: '2px solid #22d3a0',
+                        minWidth: 0,
+                        overflow: 'hidden',
+                    }}>
+                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.08em', marginBottom: 8, fontWeight: 700 }}>
+                            PORTFOLIO VALUE
                         </div>
-                    </BentoCard>
+                        <div style={{
+                            fontSize: 'clamp(14px, 4.5vw, 22px)',
+                            fontWeight: 800,
+                            color: '#fff',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            fontFamily: 'JetBrains Mono, monospace'
+                        }}>
+                            {formatAmount(convert(portfolioValue), currency)}
+                        </div>
+                        <div style={{ fontSize: 11, color: '#22d3a0', marginTop: 4, fontWeight: 600 }}>Holdings active</div>
+                    </div>
 
-                    {/* P/L - Red Accent */}
-                    <BentoCard icon={TrendingUp} title="Total P/L" delay={0.3}>
-                        <div className="mt-2">
-                            <h3 className="text-4xl font-bold text-text-main mb-2">-$450.20</h3>
-                            <div className="flex items-center text-danger bg-danger/10 w-fit px-3 py-1 rounded-lg">
-                                <ArrowDownRight size={16} className="mr-1" />
-                                <span className="font-bold text-sm">-2.1%</span>
-                            </div>
+                    {/* TOTAL P&L */}
+                    <div style={{
+                        background: 'rgba(255,255,255,0.04)',
+                        borderRadius: 14,
+                        padding: '14px 16px',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        borderTop: `2px solid ${totalPnL >= 0 ? '#22d3a0' : '#f43f5e'}`,
+                        minWidth: 0,
+                        overflow: 'hidden',
+                    }}>
+                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.08em', marginBottom: 8, fontWeight: 700 }}>
+                            TOTAL P&L
                         </div>
-                    </BentoCard>
+                        <div style={{
+                            fontSize: 'clamp(12px, 3.5vw, 18px)',
+                            fontWeight: 800,
+                            color: totalPnL >= 0 ? '#22d3a0' : '#f43f5e',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            fontFamily: 'JetBrains Mono, monospace'
+                        }}>
+                            {totalPnL >= 0 ? '+' : ''}{formatAmount(convert(totalPnL), currency)}
+                        </div>
+                        <div style={{ fontSize: 11, color: totalPnL >= 0 ? '#22d3a0' : '#f43f5e', marginTop: 4, fontWeight: 600 }}>
+                            {totalPnL >= 0 ? '↑' : '↓'} {pnlPercent.toFixed(2)}%
+                        </div>
+                    </div>
+
+                    {/* OPEN POSITIONS */}
+                    <div style={{
+                        background: 'rgba(255,255,255,0.04)',
+                        borderRadius: 14,
+                        padding: '14px 16px',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        borderTop: '2px solid #f59e0b',
+                        minWidth: 0,
+                        overflow: 'hidden',
+                    }}>
+                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.08em', marginBottom: 8, fontWeight: 700 }}>
+                            OPEN POSITIONS
+                        </div>
+                        <div style={{ fontSize: 'clamp(18px, 6vw, 28px)', fontWeight: 800, color: '#fff', fontFamily: 'JetBrains Mono, monospace' }}>
+                            {allHoldings.length}
+                        </div>
+                        <div style={{ fontSize: 11, color: '#f59e0b', marginTop: 4, fontWeight: 600 }}>Active trades</div>
+                    </div>
                 </div>
 
                 {/* Row 2 - Feature Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
                     {/* Market News - Spans 2 cols on desktop */}
                     <BentoCard className="lg:col-span-2 min-h-[350px] sm:min-h-[400px]" icon={Zap} title="Market News" delay={0.4}>
-                        {/* Refresh Button */}
-                        <button
-                            onClick={fetchNews}
-                            disabled={refreshing}
-                            className="absolute top-6 right-6 p-2 bg-tertiary hover:bg-tertiary/80 rounded-lg transition-colors disabled:opacity-50"
-                            title="Refresh News"
-                        >
-                            <RefreshCw size={16} className={`text-text-muted ${refreshing ? 'animate-spin' : ''}`} />
-                        </button>
-
-                        <div className="w-full mt-4 space-y-3 max-h-[320px] overflow-y-auto pr-2">
+                        <div className="w-full mt-4 space-y-3 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin">
                             {newsLoading ? (
                                 <div className="flex items-center justify-center h-[320px]">
                                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
@@ -254,112 +293,198 @@ export default function Dashboard() {
                                     No news available
                                 </div>
                             ) : (
-                                <>
+                                <div className="space-y-3">
                                     {news.slice(0, 6).map((article) => {
                                         const timeAgo = getTimeAgo(article.publishedAt);
                                         return (
-                                            <NewsItem
+                                            <a 
                                                 key={article.id}
-                                                id={article.id}
-                                                title={article.title}
-                                                source={article.source}
-                                                time={timeAgo}
-                                                category={article.category}
-                                                url={article.url}
-                                            />
+                                                href={article.url || '#'} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer" 
+                                                style={{
+                                                    background: 'rgba(255,255,255,0.04)',
+                                                    borderRadius: 12,
+                                                    padding: '14px 16px',
+                                                    border: '1px solid rgba(255,255,255,0.07)',
+                                                    display: 'block',
+                                                    width: '100%',
+                                                    boxSizing: 'border-box',
+                                                    textDecoration: 'none',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                                className="hover:bg-white/[0.08] hover:border-white/[0.12] transition-all group"
+                                            >
+                                                <p style={{
+                                                    margin: '0 0 10px',
+                                                    fontSize: 'clamp(13px, 3.8vw, 15px)',
+                                                    fontWeight: 700,
+                                                    lineHeight: 1.5,
+                                                    color: '#fff',
+                                                    wordBreak: 'break-word',
+                                                }}>
+                                                    {article.title}
+                                                </p>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                                                    <span style={{ 
+                                                        background: 'rgba(56,189,248,0.15)', 
+                                                        color: '#38bdf8',
+                                                        borderRadius: 6, 
+                                                        padding: '2px 10px', 
+                                                        fontSize: 10,
+                                                        fontWeight: 800,
+                                                        textTransform: 'uppercase',
+                                                        letterSpacing: '0.05em'
+                                                    }}>
+                                                        {article.category}
+                                                    </span>
+                                                    <span style={{
+                                                        fontSize: 11, 
+                                                        color: 'rgba(255,255,255,0.35)',
+                                                        overflow: 'hidden', 
+                                                        textOverflow: 'ellipsis', 
+                                                        whiteSpace: 'nowrap',
+                                                        maxWidth: '60%',
+                                                        fontWeight: 500
+                                                    }}>
+                                                        {article.source} • {timeAgo}
+                                                    </span>
+                                                </div>
+                                            </a>
                                         );
                                     })}
-                                </>
+                                </div>
                             )}
                         </div>
                     </BentoCard>
 
                     {/* Asset Allocation */}
                     <BentoCard icon={Shield} title="Asset Allocation" delay={0.5}>
-                        <div className="h-[250px] relative flex items-center justify-center">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    <Pie
-                                        data={portfolioData}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={70}
-                                        outerRadius={90}
-                                        paddingAngle={5}
-                                        dataKey="value"
-                                        stroke="none"
-                                    >
-                                        {portfolioData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={entry.color} />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip contentStyle={{ backgroundColor: '#0A0A0A', border: '1px solid #262626', borderRadius: '8px' }} itemStyle={{ color: 'white' }} />
-                                </PieChart>
-                            </ResponsiveContainer>
-                            <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
-                                <span className="text-text-muted text-sm font-medium">Total</span>
-                                <span className="text-2xl font-bold text-text-main">$18k</span>
+                        {allHoldings.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-12 text-text-muted">
+                                <Shield size={32} className="mb-3 opacity-30" />
+                                <p className="font-medium text-sm">No holdings yet</p>
+                                <p className="text-[11px] mt-1">Start trading to see your allocation</p>
                             </div>
-                        </div>
-                        <div className="mt-4 space-y-3">
-                            {portfolioData.map((item) => (
-                                <div key={item.name} className="flex justify-between items-center text-sm p-2 hover:bg-tertiary rounded-lg transition-colors cursor-default">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-3 h-3 rounded-full shadow-[0_0_8px]" style={{ backgroundColor: item.color, boxShadow: `0 0 10px ${item.color}` }} />
-                                        <span className="font-medium text-base text-text-muted">{item.name}</span>
-                                    </div>
-                                    <span className="font-bold text-text-main">{item.value}%</span>
-                                </div>
-                            ))}
-                        </div>
+                        ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-1 xl:grid-cols-1 gap-3 max-h-[400px] overflow-y-auto pr-1 scrollbar-thin">
+                                {allHoldings.sort((a, b) => b.currentValue - a.currentValue).map((item) => {
+                                    const allocation = portfolioValue > 0 ? ((item.currentValue / portfolioValue) * 100) : 0;
+                                    const isProfit = item.pnl >= 0;
+                                    const assetColor = getAssetColor(item.symbol);
+                                    
+                                    return (
+                                        <div key={item.symbol} className="bg-white/[0.02] rounded-xl p-3 sm:p-4 border border-white/[0.04] hover:border-accent/20 transition-all flex flex-col gap-3">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2.5">
+                                                    <CoinIcon symbol={item.symbol} size={32} />
+                                                    <div>
+                                                        <h3 className="font-bold text-white text-[13px]">{item.symbol}</h3>
+                                                        <div className="flex items-center gap-1.5 mt-0.5">
+                                                            <span className="text-[10px] text-slate-400 font-mono price-mono">{item.quantity.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
+                                                            <span className="text-[9px] text-slate-600 uppercase">@</span>
+                                                            <span className="text-[10px] text-slate-400 font-mono price-mono">{formatAmount(convert(item.buyPrice), currency)}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <span className="font-bold text-white font-mono price-mono text-[13px] block">{formatAmount(convert(item.currentValue), currency)}</span>
+                                                    <div className={`font-mono price-mono font-bold text-[10px] flex justify-end gap-1 mt-0.5 ${isProfit ? 'text-success' : 'text-danger'}`}>
+                                                        {isProfit ? '+' : ''}{item.pnlPercent.toFixed(1)}%
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Allocation Bar */}
+                                            <div className="w-full">
+                                                <div className="flex justify-between text-[9px] font-bold text-slate-500 mb-1.5">
+                                                    <span className="uppercase tracking-widest">Weight</span>
+                                                    <span>{allocation.toFixed(1)}%</span>
+                                                </div>
+                                                <div className="h-1 w-full bg-white/[0.03] rounded-full overflow-hidden border border-white/[0.04]">
+                                                    <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${allocation}%`, backgroundColor: assetColor }} />
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center gap-2 w-full">
+                                                <button 
+                                                    onClick={() => navigate(`/trade/${item.symbol}`)}
+                                                    className="flex-1 px-2 py-1.5 bg-success/[0.1] hover:bg-success/[0.2] text-success rounded-lg font-bold text-[10px] transition-colors border border-success/[0.15]"
+                                                >
+                                                    Buy
+                                                </button>
+                                                <button 
+                                                    onClick={() => navigate(`/trade/${item.symbol}`)}
+                                                    className="flex-1 px-2 py-1.5 bg-danger/[0.1] hover:bg-danger/[0.2] text-danger rounded-lg font-bold text-[10px] transition-colors border border-danger/[0.15]"
+                                                >
+                                                    Sell
+                                                </button>
+                                                <button 
+                                                    onClick={() => {
+                                                        const pnlStr = isProfit ? 'up' : 'down';
+                                                        const message = `I hold ${item.symbol} and I'm ${pnlStr} ${Math.abs(item.pnlPercent).toFixed(1)}%. Should I take profits or hold?`;
+                                                        window.dispatchEvent(new CustomEvent('open-crypto-chat', { detail: { message } }));
+                                                    }}
+                                                    className="px-2 py-1.5 bg-sky-500/[0.1] hover:bg-sky-500/[0.2] text-sky-400 rounded-lg font-bold text-[10px] transition-colors border border-sky-500/[0.2] flex items-center justify-center"
+                                                    title="Ask AI"
+                                                >
+                                                    <MessageCircle size={13} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </BentoCard>
                 </div>
 
                 {/* Market List */}
                 <BentoCard className="min-h-[300px]" delay={0.6}>
-                    <div className="flex justify-between items-center mb-6 flex-wrap gap-3">
+                    <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
                         <h3 className="text-xl font-bold text-text-main">Live Markets</h3>
                         <div className="flex items-center gap-3">
                             <MarketToggle />
-                            <Link to="/markets" className="text-sm text-accent hover:text-white transition-colors font-medium flex items-center gap-1">
+                            <Link to="/markets" className="text-[12px] text-accent hover:text-white transition-colors font-bold uppercase tracking-widest flex items-center gap-1.5">
                                 View All <ArrowRight size={14} />
                             </Link>
                         </div>
                     </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="text-text-muted text-xs uppercase tracking-wider border-b border-white/5 bg-tertiary/20">
-                                <tr>
-                                    <th className="text-left py-4 px-4 font-medium">Asset</th>
-                                    <th className="text-right py-4 px-4 font-medium">Price</th>
-                                    <th className="text-right py-4 px-4 font-medium hidden sm:table-cell">24h Change</th>
-                                    <th className="text-right py-4 px-4 font-medium">Action</th>
+                    <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+                        <table className="w-full min-w-[500px] sm:min-w-0">
+                            <thead>
+                                <tr className="border-b border-white/[0.06]">
+                                    <th className="text-left py-3 px-3 th-label">Asset</th>
+                                    <th className="text-right py-3 px-3 th-label">Price</th>
+                                    <th className="text-right py-3 px-3 th-label hidden sm:table-cell">24h Change</th>
+                                    <th className="text-right py-3 px-3 th-label">Action</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-white/5">
+                            <tbody>
                                 {loading ? (
-                                    <tr><td colSpan="4" className="py-8 text-center text-text-muted">Loading market data...</td></tr>
+                                    <tr><td colSpan="4" className="py-12 text-center text-slate-500 text-sm">Synchronizing real-time data...</td></tr>
                                 ) : marketData.map((asset) => (
-                                    <tr key={asset.id} className="hover:bg-tertiary transition-colors group">
-                                        <td className="py-4 px-4">
+                                    <tr key={asset.id} className="hover:bg-white/[0.02] transition-colors group border-b border-white/[0.04]">
+                                        <td className="py-4 px-3">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-xl bg-tertiary flex items-center justify-center font-bold text-sm text-text-main group-hover:scale-110 transition-transform">
-                                                    {asset.symbol[0]}
-                                                </div>
+                                                <CoinIcon symbol={asset.symbol} size={32} />
                                                 <div>
-                                                    <p className="font-bold text-base text-text-main">{asset.name}</p>
-                                                    <p className="text-xs text-text-muted">{asset.symbol}</p>
+                                                    <p className="font-bold text-[13px] text-white leading-none mb-1">{asset.name}</p>
+                                                    <p className="text-[10px] text-slate-500 uppercase tracking-widest">{asset.symbol}</p>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="text-right py-4 px-4 font-medium text-lg text-text-main">
-                                            ${asset.price.toLocaleString()}
+                                        <td className="text-right py-4 px-3 font-mono price-mono font-bold text-white text-[13px]">
+                                            {formatAmount(convert(asset.price), currency)}
                                         </td>
-                                        <td className={`text-right py-4 px-4 font-medium text-sm hidden sm:table-cell ${asset.change >= 0 ? 'text-success' : 'text-danger'}`}>
-                                            {asset.change >= 0 ? '+' : ''}{asset.change}%
+                                        <td className={`text-right py-4 px-3 font-mono price-mono font-bold text-[12px] hidden sm:table-cell ${asset.change >= 0 ? 'text-success' : 'text-danger'}`}>
+                                            <span className="flex items-center justify-end gap-1">
+                                                {asset.change >= 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+                                                {Math.abs(asset.change).toFixed(2)}%
+                                            </span>
                                         </td>
-                                        <td className="text-right py-4 px-4">
-                                            <Link to={`/trade/${asset.symbol}`} className="bg-tertiary hover:bg-accent hover:text-white text-accent px-4 py-2 rounded-lg text-sm font-bold transition-all inline-block">
+                                        <td className="text-right py-4 px-3">
+                                            <Link to={`/trade/${asset.symbol}`} className="bg-white/[0.04] hover:bg-accent hover:text-black border border-white/[0.08] hover:border-accent px-4 py-1.5 rounded-lg text-[11px] font-bold transition-all inline-block uppercase tracking-wider">
                                                 Trade
                                             </Link>
                                         </td>
@@ -370,6 +495,7 @@ export default function Dashboard() {
                     </div>
                 </BentoCard>
             </div>
+            <CryptoChatbot />
         </MainLayout>
     );
 }

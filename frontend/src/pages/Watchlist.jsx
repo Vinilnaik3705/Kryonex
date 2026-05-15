@@ -6,14 +6,18 @@ import AssetDrawer from '../components/ui/AssetDrawer';
 import { useMarket } from '../context/MarketContext';
 import { Link } from 'react-router-dom';
 import EmptyState from '../components/ui/EmptyState';
-import MarketToggle from '../components/ui/MarketToggle';
 import axios from 'axios';
 import API_BASE_URL from '../config/api';
+import { formatPrice } from '../utils/formatPrice';
+import { useCurrency } from '../context/CurrencyContext';
+import { formatAmount } from '../utils/formatCurrency';
+import CoinIcon from '../components/ui/CoinIcon';
 
 const API_URL = `${API_BASE_URL}`;
 
 export default function Watchlist() {
-    const { toggleWatchlist, isInWatchlist, marketType, watchlist } = useMarket();
+    const { toggleWatchlist, isInWatchlist, watchlist } = useMarket();
+        const { currency, convert } = useCurrency();
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedAsset, setSelectedAsset] = useState(null);
     const [assets, setAssets] = useState([]);
@@ -24,65 +28,24 @@ export default function Watchlist() {
         const fetchAssets = async () => {
             setLoading(true);
             try {
-                if (marketType === 'crypto') {
-                    // Fetch crypto
-                    const endpoint = `${API_URL}/crypto/market-cap?limit=100`;
-                    const response = await axios.get(endpoint);
+                const endpoint = `${API_URL}/crypto/market-cap?limit=100`;
+                const response = await axios.get(endpoint);
 
-                    if (response.data.success || response.data.data) {
-                        const data = response.data.data || response.data;
-                        const formatted = data.map(item => {
-                            const assetId = (item.baseAsset || item.symbol || '').toUpperCase();
-                            return {
-                                id: assetId,
-                                name: item.name || item.baseAsset || assetId,
-                                symbol: assetId,
-                                price: parseFloat(item.price) || 0,
-                                change: parseFloat(item.changePercent || item.priceChangePercent) || 0,
-                                marketCap: item.marketCap || item.quoteVolume || 'N/A',
-                                volume: item.volume || item.quoteVolume || 'N/A'
-                            };
-                        });
-                        setAssets(formatted);
-                    }
-                } else {
-                    // Fetch stocks AND ETFs (same as Markets page)
-                    const [stocksResponse, etfsResponse] = await Promise.all([
-                        axios.get(`${API_URL}/stocks/top?limit=100`),
-                        axios.get(`${API_URL}/etfs/top?limit=100`)
-                    ]);
-
-                    const allAssets = [];
-
-                    // Add stocks
-                    if (stocksResponse.data.success) {
-                        const formattedStocks = stocksResponse.data.data.map(item => ({
-                            id: item.symbol, // Uppercase
-                            name: item.name,
-                            symbol: item.symbol,
+                if (response.data.success || response.data.data) {
+                    const data = response.data.data || response.data;
+                    const formatted = data.map(item => {
+                        const assetId = (item.baseAsset || item.symbol || '').toUpperCase();
+                        return {
+                            id: assetId,
+                            name: item.name || item.baseAsset || assetId,
+                            symbol: assetId,
                             price: parseFloat(item.price) || 0,
-                            change: parseFloat(item.changePercent) || 0,
-                            marketCap: item.marketCap || 'N/A',
-                            volume: item.volume || 'N/A'
-                        }));
-                        allAssets.push(...formattedStocks);
-                    }
-
-                    // Add ETFs
-                    if (etfsResponse.data.success) {
-                        const formattedETFs = etfsResponse.data.data.map(item => ({
-                            id: item.symbol, // Uppercase
-                            name: item.name,
-                            symbol: item.symbol,
-                            price: parseFloat(item.price) || 0,
-                            change: parseFloat(item.changePercent) || 0,
-                            marketCap: item.marketCap || 'N/A',
-                            volume: item.volume || 'N/A'
-                        }));
-                        allAssets.push(...formattedETFs);
-                    }
-
-                    setAssets(allAssets);
+                            change: parseFloat(item.changePercent || item.priceChangePercent) || 0,
+                            marketCap: item.marketCap || item.quoteVolume || 'N/A',
+                            volume: item.volume || item.quoteVolume || 'N/A'
+                        };
+                    });
+                    setAssets(formatted);
                 }
             } catch (error) {
                 console.error('Failed to fetch watchlist assets:', error);
@@ -93,7 +56,7 @@ export default function Watchlist() {
         };
 
         fetchAssets();
-    }, [marketType]);
+    }, []);
 
     const filteredData = useMemo(() => {
         // Filter by watchlist
@@ -113,25 +76,20 @@ export default function Watchlist() {
 
     return (
         <MainLayout>
-            <div className="space-y-8">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="space-y-5">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                     <div>
-                        <h2 className="text-2xl font-bold bg-gradient-to-r from-text-main to-text-muted bg-clip-text text-transparent">
-                            My Watchlist
-                        </h2>
-                        <p className="text-text-muted mt-1 text-sm">
-                            Track your favorite assets
-                        </p>
+                        <h2 className="text-xl font-extrabold text-white">My Watchlist</h2>
+                        <p className="text-[rgba(255,255,255,0.3)] mt-0.5 text-[12px]">Track your favorite assets</p>
                     </div>
 
-                    <div className="flex items-center gap-3 w-full md:w-auto">
-                        <MarketToggle />
-                        <div className="relative flex-1 md:w-64 group max-w-md">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted group-hover:text-text-main transition-colors" size={18} />
+                    <div className="flex items-center gap-2 w-full md:w-auto">
+                        <div className="relative flex-1 md:w-56 group max-w-md">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[rgba(255,255,255,0.25)] group-focus-within:text-accent transition-colors" size={16} />
                             <input
                                 type="text"
                                 placeholder="Search watchlist..."
-                                className="w-full bg-secondary border border-border rounded-xl pl-10 pr-4 py-2.5 text-text-main focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/50 transition-all placeholder:text-text-muted"
+                                className="w-full bg-white/[0.04] border border-[rgba(255,255,255,0.06)] rounded-lg pl-9 pr-4 py-2 text-white text-[13px] focus:outline-none focus:border-accent/40 transition-all placeholder:text-[rgba(255,255,255,0.25)]"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
@@ -142,25 +100,25 @@ export default function Watchlist() {
                 <BentoCard>
                     <div className="overflow-x-auto min-h-[400px]">
                         <table className="w-full">
-                            <thead className="text-text-muted text-xs uppercase tracking-wider border-b border-border">
-                                <tr>
-                                    <th className="w-8 sm:w-12 text-center py-4"></th>
-                                    <th className="text-left py-4 px-3 sm:px-6 font-medium">Asset</th>
-                                    <th className="text-right py-4 px-3 sm:px-6 font-medium">Price</th>
-                                    <th className="text-right py-4 px-3 sm:px-6 font-medium">Change</th>
-                                    <th className="text-right py-4 px-6 font-medium hidden lg:table-cell">Market Cap</th>
-                                    <th className="text-right py-4 px-6 font-medium hidden xl:table-cell">Volume</th>
-                                    <th className="text-right py-4 px-3 sm:px-6 font-medium hidden sm:table-cell">Trade</th>
+                            <thead>
+                                <tr className="border-b border-[rgba(255,255,255,0.06)]">
+                                    <th className="w-8 text-center py-3"></th>
+                                    <th className="text-left py-3 px-3 sm:px-5 th-label">Asset</th>
+                                    <th className="text-right py-3 px-3 sm:px-5 th-label">Price</th>
+                                    <th className="text-right py-3 px-3 sm:px-5 th-label">Change</th>
+                                    <th className="text-right py-3 px-5 th-label hidden lg:table-cell">Market Cap</th>
+                                    <th className="text-right py-3 px-5 th-label hidden xl:table-cell">Volume</th>
+                                    <th className="text-right py-3 px-3 sm:px-5 th-label hidden sm:table-cell">Trade</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-border">
+                            <tbody>
                                 {filteredData.map((asset) => (
                                     <tr
                                         key={asset.id}
                                         onClick={() => setSelectedAsset(asset)}
-                                        className="hover:bg-tertiary transition-colors group cursor-pointer"
+                                        className="hover:bg-[rgba(56,189,248,0.04)] transition-colors group cursor-pointer border-b border-[rgba(255,255,255,0.04)]"
                                     >
-                                        <td className="text-center py-4 px-2">
+                                        <td className="text-center py-3 px-2">
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
@@ -168,46 +126,44 @@ export default function Watchlist() {
                                                 }}
                                                 className="text-yellow-400 fill-yellow-400 transition-all hover:scale-110"
                                             >
-                                                <Star size={18} />
+                                                <Star size={14} />
                                             </button>
                                         </td>
-                                        <td className="py-4 px-3 sm:px-6">
-                                            <div className="flex items-center gap-3 sm:gap-4">
-                                                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-tertiary flex items-center justify-center font-bold text-xs sm:text-sm text-text-main border border-border group-hover:border-accent/20 transition-all">
-                                                    {asset.symbol[0]}
-                                                </div>
+                                        <td className="py-3 px-3 sm:px-5">
+                                            <div className="flex items-center gap-2.5">
+                                                <CoinIcon symbol={asset.symbol} size={28} />
                                                 <div className="min-w-0">
-                                                    <p className="font-bold text-base text-text-main truncate max-w-[80px] sm:max-w-none">{asset.name}</p>
-                                                    <span className="text-[10px] sm:text-xs font-bold text-text-muted bg-tertiary px-1.5 py-0.5 rounded">{asset.symbol}</span>
+                                                    <p className="font-bold text-[13px] text-white truncate max-w-[80px] sm:max-w-none">{asset.name}</p>
+                                                    <span className="text-[10px] text-[rgba(255,255,255,0.25)] uppercase tracking-wider">{asset.symbol}</span>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="text-right py-4 px-3 sm:px-6">
-                                            <span className="font-bold text-lg text-text-main">
-                                                ${asset.price.toLocaleString()}
+                                        <td className="text-right py-3 px-3 sm:px-5">
+                                            <span className="font-mono price-mono font-bold text-white">
+                                                {formatAmount(convert(asset.price), currency)}
                                             </span>
                                         </td>
-                                        <td className="text-right py-4 px-3 sm:px-6">
-                                            <div className={`inline-flex items-center gap-1 font-bold text-sm ${asset.change >= 0 ? 'text-success' : 'text-danger'}`}>
-                                                {asset.change >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                                        <td className="text-right py-3 px-3 sm:px-5">
+                                            <div className={`inline-flex items-center gap-1 font-mono price-mono font-bold text-[13px] ${asset.change >= 0 ? 'text-success' : 'text-danger'}`}>
+                                                {asset.change >= 0 ? '↑' : '↓'}
                                                 {Math.abs(asset.change)}%
                                             </div>
                                         </td>
-                                        <td className="text-right py-4 px-6 text-text-muted font-medium hidden lg:table-cell">
-                                            {asset.marketCap}
+                                        <td className="text-right py-3 px-5 text-[rgba(255,255,255,0.4)] font-mono price-mono text-[12px] hidden lg:table-cell">
+                                            {asset.marketCap && asset.marketCap !== 'N/A' ? formatAmount(convert(Number(asset.marketCap)), currency) : 'N/A'}
                                         </td>
-                                        <td className="text-right py-4 px-6 text-text-muted font-medium hidden xl:table-cell">
-                                            {asset.volume}
+                                        <td className="text-right py-3 px-5 text-[rgba(255,255,255,0.4)] font-mono price-mono text-[12px] hidden xl:table-cell">
+                                            {asset.volume && asset.volume !== 'N/A' ? formatAmount(convert(Number(asset.volume)), currency) : 'N/A'}
                                         </td>
-                                        <td className="text-right py-4 px-3 sm:px-6 hidden sm:table-cell">
+                                        <td className="text-right py-3 px-3 sm:px-5 hidden sm:table-cell">
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     setSelectedAsset(asset);
                                                 }}
-                                                className="group/btn inline-flex items-center justify-center bg-tertiary hover:bg-accent hover:text-white text-accent border border-accent/20 hover:border-accent px-4 py-2 rounded-lg text-sm font-bold transition-all"
+                                                className="bg-accent/[0.1] hover:bg-accent/[0.2] text-accent border border-accent/[0.25] px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all"
                                             >
-                                                Trade <ArrowUpRight size={16} className="ml-1 opacity-0 -translate-x-2 group-hover/btn:opacity-100 group-hover/btn:translate-x-0 transition-all" />
+                                                Trade <ArrowUpRight size={12} className="ml-0.5 inline" />
                                             </button>
                                         </td>
                                     </tr>

@@ -15,7 +15,7 @@ const Payment = () => {
         assetName: 'Unknown',
         assetSymbol: 'N/A',
         quantity: 0,
-        type: 'stock' // 'stock', 'crypto', or 'subscription'
+        type: 'crypto' // 'crypto' or 'subscription'
     };
 
     useEffect(() => {

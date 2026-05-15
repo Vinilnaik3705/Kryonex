@@ -2,14 +2,12 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Command, ArrowRight, LayoutDashboard, Wallet, Settings, TrendingUp, Sun, Moon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useMarket } from '../../context/MarketContext';
 
 export default function CommandPalette() {
     const [isOpen, setIsOpen] = useState(false);
     const [query, setQuery] = useState('');
     const [selectedIndex, setSelectedIndex] = useState(0);
     const navigate = useNavigate();
-    const { marketType, setMarketType } = useMarket();
 
     // Toggle Open/Close
     useEffect(() => {
@@ -40,9 +38,7 @@ export default function CommandPalette() {
         { id: 'tsla', label: 'Tesla (TSLA)', icon: TrendingUp, type: 'asset', path: '/trade/tesla' },
         { id: 'aapl', label: 'Apple (AAPL)', icon: TrendingUp, type: 'asset', path: '/trade/apple' },
 
-        { id: 'action-crypto', label: 'Switch to Crypto', icon: Command, type: 'action', action: () => setMarketType('crypto') },
-        { id: 'action-stocks', label: 'Switch to Stocks', icon: Command, type: 'action', action: () => setMarketType('stock') },
-    ], [setMarketType]);
+    ], []);
 
     // Filter Logic
     const filteredCommands = useMemo(() => {

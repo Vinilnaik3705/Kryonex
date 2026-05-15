@@ -13,6 +13,8 @@
     /* Gray-800 text */
     --color-text-muted: #6b7280;
     /* Gray-500 muted text */
+    --color-text-dim: #9ca3af;
+    /* Gray-400 dim text */
     --color-border: #e5e7eb;
     /* Gray-200 border */
     --color-accent: #0ea5e9;
@@ -23,56 +25,55 @@
   }
 
   .dark {
-    /* Dark Mode Defaults */
-    --color-primary: #050505;
-    /* True Black */
-    --color-secondary: #0A0A0A;
-    /* Almost Black (Card Bg) */
+    /* ── Premium Trading Terminal Palette ── */
+    --color-primary: #050d14;
+    /* Void black — page background */
+    --color-secondary: #0a1824;
+    /* Deep navy — card background */
     --color-text: #ffffff;
     /* White text */
-    --color-text-muted: #94a3b8;
-    /* Slate-400 muted text */
-    --color-border: #262626;
-    /* Neutral 800 border */
+    --color-text-muted: rgba(255, 255, 255, 0.5);
+    /* Secondary text */
+    --color-text-dim: rgba(255, 255, 255, 0.25);
+    /* Muted labels / headers */
+    --color-border: rgba(255, 255, 255, 0.06);
+    /* Border default */
     --color-accent: #38BDF8;
     /* Sky-400 */
-    --color-card: #0A0A0A;
-    --color-hover: #171717;
-    /* Neutral 900 */
+    --color-card: #0a1824;
+    /* Deep navy */
+    --color-hover: #0f2030;
+    /* Background hover */
   }
 
-  html {
-    @apply overflow-x-hidden;
-    font-size: 16px;
+  html, body, #root {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+    margin: 0;
+    padding: 0;
   }
 
   body {
     background-color: var(--color-primary);
     color: var(--color-text);
-    @apply overflow-x-hidden transition-colors duration-300;
+    font-family: 'Syne', 'Inter', sans-serif;
+    transition: color 0.3s, background-color 0.3s;
     font-size: 14px;
     line-height: 1.6;
   }
 
-  /* Improved heading classes using variable colors */
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
+  /* Headings — Syne */
+  h1, h2, h3, h4, h5, h6 {
     color: var(--color-text);
+    font-family: 'Syne', sans-serif;
   }
 
-  /* Applying variable colors to common elements */
-  p,
-  span,
-  div {
-    /* Inherit color by default, but allow overrides */
-  }
-
-  #root {
-    @apply overflow-x-hidden;
+  .page-container {
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 16px;
   }
 
   h1 {
@@ -92,25 +93,78 @@
   }
 }
 
-/* Custom Scrollbar */
+/* ── Scrollbar — Ultra-thin ── */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 3px;
+  height: 3px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0F172A;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #334155;
-  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: rgba(255, 255, 255, 0.14);
 }
 
-/* Font Size Utilities - Consistent Typography Scale */
+/* ── Stat Card Accent Borders ── */
+@layer components {
+  .stat-card {
+    @apply relative rounded-xl border border-border bg-card p-4 overflow-hidden;
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    border-radius: 2px 2px 0 0;
+  }
+
+  .stat-card-blue::before {
+    background: #38BDF8;
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+  }
+
+  .stat-card-green::before {
+    background: #22d3a0;
+    box-shadow: 0 0 12px rgba(34, 211, 160, 0.4);
+  }
+
+  .stat-card-red::before {
+    background: #f43f5e;
+    box-shadow: 0 0 12px rgba(244, 63, 94, 0.4);
+  }
+
+  .stat-card-amber::before {
+    background: #f59e0b;
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
+  }
+
+  /* Table header style */
+  .th-label {
+    font-family: 'Syne', sans-serif;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-text-dim);
+  }
+
+  /* Monospace for prices */
+  .price-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+/* ── Typography Scale ── */
 @layer utilities {
   .text-2xs {
     font-size: 10px;
@@ -161,4 +215,9 @@
     font-size: 32px;
     line-height: 1.2;
   }
+}
+
+/* ── Global Transitions ── */
+button, a, input, select, textarea {
+  transition: all 0.2s ease;
 }

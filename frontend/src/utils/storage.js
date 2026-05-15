@@ -1,0 +1,1 @@
+export const buildUserScopedStorageKey = (baseKey, userId) => `${baseKey}:${userId || 'guest'}`;

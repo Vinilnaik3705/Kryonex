@@ -1,84 +1,39 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
-import API_BASE_URL from '../config/api';
+import React, { createContext, useContext } from 'react';
+import { useAuth as useClerkAuth, useUser, useClerk } from '@clerk/clerk-react';
 
 const AuthContext = createContext(null);
-const API_URL = API_BASE_URL;
 
 export const AuthProvider = ({ children }) => {
-    const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const { isLoaded, isSignedIn } = useClerkAuth();
+    const { user } = useUser();
 
-    // Check for persisted user on mount
-    useEffect(() => {
-        const checkUserLoggedIn = async () => {
-            const token = localStorage.getItem('tradeSimToken');
-            if (token) {
-                try {
-                    const config = {
-                        headers: {
-                            Authorization: `Bearer ${token}`
-                        }
-                    };
-                    const res = await axios.get(`${API_URL}/auth/me`, config);
-                    setUser(res.data);
-                } catch (error) {
-                    console.error('Token verification failed:', error);
-                    localStorage.removeItem('tradeSimToken');
-                }
-            }
-            setLoading(false);
-        };
+    const { signOut } = useClerk();
 
-        checkUserLoggedIn();
-    }, []);
-
-    const login = async (email, password) => {
-        try {
-            const res = await axios.post(`${API_URL}/auth/login`, { email, password });
-            if (res.data.token) {
-                localStorage.setItem('tradeSimToken', res.data.token);
-                // We typically get the user object back too, or we can fetch it
-                // Based on controller, we get { _id, name, email, role, token }
-                setUser(res.data);
-                return { success: true };
-            }
-        } catch (error) {
-            console.error('Login error:', error.response?.data?.message || error.message);
-            return {
-                success: false,
-                error: error.response?.data?.message || 'Login failed'
-            };
-        }
-    };
-
-    const register = async (name, email, password) => {
-        try {
-            const res = await axios.post(`${API_URL}/auth/register`, { name, email, password });
-            if (res.data.token) {
-                localStorage.setItem('tradeSimToken', res.data.token);
-                setUser(res.data);
-                return { success: true };
-            }
-        } catch (error) {
-            console.error('Registration error:', error.response?.data?.message || error.message);
-            return {
-                success: false,
-                error: error.response?.data?.message || 'Registration failed'
-            };
-        }
-    };
-
-    const logout = () => {
-        setUser(null);
-        localStorage.removeItem('tradeSimToken');
+    // Map Clerk's auth state to our context for compatibility
+    const authContextValue = {
+        user: isSignedIn ? {
+            id: user?.id,
+            email: user?.primaryEmailAddress?.emailAddress,
+            name: user?.fullName || user?.firstName,
+            image: user?.imageUrl,
+        } : null,
+        isSignedIn,
+        isLoaded,
+        loading: !isLoaded,
+        logout: () => signOut(),
     };
 
     return (
-        <AuthContext.Provider value={{ user, login, register, logout, loading }}>
+        <AuthContext.Provider value={authContextValue}>
             {children}
         </AuthContext.Provider>
     );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+    const context = useContext(AuthContext);
+    if (!context) {
+        throw new Error('useAuth must be used within AuthProvider');
+    }
+    return context;
+};

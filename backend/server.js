@@ -3,11 +3,12 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const compression = require("compression");
-const stockRoutes = require("./routes/stockRoutes");
-const etfRoutes = require("./routes/etfRoutes");
+const { clerkMiddleware } = require("@clerk/express");
 const cryptoRoutes = require("./routes/cryptoRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
 const newsRoutes = require("./routes/newsRoutes");
+const aiRoutes = require("./routes/aiRoutes");
+const coinLogos = require("./routes/coinLogos");
 const errorHandler = require("./middleware/errorHandler");
 const rateLimiter = require("./middleware/rateLimiter");
 const connectDB = require("./config/db");
@@ -22,6 +23,7 @@ app.use(compression());
 app.use(cors({
     origin: [
         "http://localhost:5173",
+        "http://localhost:3000",
         "https://tradesim-9yh.pages.dev",
         /^https:\/\/.*\.tradesim-9yh\.pages\.dev$/
     ],
@@ -29,6 +31,9 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Clerk middleware
+app.use(clerkMiddleware());
 
 connectDB();
 
@@ -46,11 +51,11 @@ app.get("/", (req, res) => {
     res.send("TradeSim Backend Running ✅");
 });
 
-app.use("/api/stocks", stockRoutes);
-app.use("/api/etfs", etfRoutes);
 app.use("/api/crypto", cryptoRoutes);
 app.use("/api/payment", paymentRoutes);
 app.use("/api/news", newsRoutes);
+app.use("/api/ai", aiRoutes);
+app.use("/api/coin-logos", coinLogos);
 app.use("/api/auth", require("./routes/authRoutes"));
 
 app.use((req, res) => {

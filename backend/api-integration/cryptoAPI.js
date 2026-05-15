@@ -32,7 +32,7 @@ class CryptoAPI {
     constructor() {
         this.baseURL = 'https://api.binance.com/api/v3';
         this.cacheTTL = {
-            price: parseInt(process.env.CACHE_TTL_QUOTE) || 30,
+            price: parseInt(process.env.CACHE_TTL_QUOTE) || 5,
             history: parseInt(process.env.CACHE_TTL_HISTORY) || 300,
             trending: parseInt(process.env.CACHE_TTL_SEARCH) || 600
         };
@@ -46,13 +46,6 @@ class CryptoAPI {
         const tradingPair = symbol.toUpperCase().endsWith('USDT')
             ? symbol.toUpperCase()
             : `${symbol.toUpperCase()}USDT`;
-
-        const cacheKey = `crypto:price:${tradingPair}`;
-        const cached = cacheService.get(cacheKey);
-
-        if (cached) {
-            return cached;
-        }
 
         try {
             // Get 24hr ticker data
@@ -77,8 +70,6 @@ class CryptoAPI {
                 trades: ticker.count,
                 timestamp: new Date(ticker.closeTime).toISOString()
             };
-
-            cacheService.set(cacheKey, data, this.cacheTTL.price);
             return data;
         } catch (error) {
             if (error.response?.status === 400) {

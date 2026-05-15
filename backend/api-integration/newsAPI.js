@@ -1,44 +1,37 @@
 const axios = require('axios');
 const Parser = require('rss-parser');
+const crypto = require('crypto');
+
 const parser = new Parser({
     customFields: {
         item: ['media:content', 'media:thumbnail']
     }
 });
 
-// RSS Feed sources for financial news
+/**
+ * Generate a consistent ID from article URL
+ */
+function generateArticleId(url) {
+    return crypto.createHash('md5').update(url).digest('hex').substring(0, 12);
+}
+
+// RSS Feed sources for crypto news only
 const RSS_FEEDS = {
-    all: [
-        'https://feeds.bloomberg.com/markets/news.rss',
-        'https://www.cnbc.com/id/100003114/device/rss/rss.html', // Top News
-        'https://www.marketwatch.com/rss/topstories',
-        'https://www.coindesk.com/arc/outboundfeeds/rss/',
-        'https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=10000664' // Economy
-    ],
-    stocks: [
-        'https://feeds.bloomberg.com/markets/news.rss',
-        'https://www.marketwatch.com/rss/topstories',
-        'https://www.cnbc.com/id/100727362/device/rss/rss.html' // Stocks
-    ],
     crypto: [
         'https://www.coindesk.com/arc/outboundfeeds/rss/',
         'https://cointelegraph.com/rss',
         'https://decrypt.co/feed'
-    ],
-    economy: [
-        'https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=10000664',
-        'https://feeds.bloomberg.com/economics/news.rss'
     ]
 };
 
 /**
- * Fetch financial news from RSS feeds
- * @param {string} category - 'all', 'stocks', 'crypto', 'economy'
+ * Fetch crypto news from RSS feeds
+ * @param {string} category - crypto only
  * @param {number} limit - Number of articles to fetch
  */
-async function getFinancialNews(category = 'all', limit = 20) {
+async function getFinancialNews(category = 'crypto', limit = 20) {
     try {
-        const feeds = RSS_FEEDS[category] || RSS_FEEDS.all;
+        const feeds = RSS_FEEDS.crypto;
         const allArticles = [];
 
         // Fetch from multiple RSS feeds in parallel
@@ -46,7 +39,7 @@ async function getFinancialNews(category = 'all', limit = 20) {
             try {
                 const feed = await parser.parseURL(feedUrl);
                 return feed.items.map(item => ({
-                    id: `rss-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                    id: generateArticleId(item.link || item.title),
                     title: item.title || 'Untitled',
                     description: item.contentSnippet || item.content || item.summary || '',
                     content: item.content || item.contentSnippet || item.summary || '',
@@ -69,11 +62,13 @@ async function getFinancialNews(category = 'all', limit = 20) {
         // Sort by publish date (newest first)
         allArticles.sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
 
+        const cryptoArticles = allArticles.filter((article) => article.category === 'Crypto');
+
         // Return limited results
         return {
             success: true,
-            data: allArticles.slice(0, limit),
-            totalResults: allArticles.length,
+            data: cryptoArticles.slice(0, limit),
+            totalResults: cryptoArticles.length,
             source: 'RSS Feeds'
         };
     } catch (error) {
@@ -125,21 +120,21 @@ function getFallbackNews() {
         data: [
             {
                 id: 'fallback-1',
-                title: 'Markets Update: Trading Activity Remains Strong',
-                description: 'Financial markets continue to show resilience amid economic uncertainty.',
-                content: 'Financial markets continue to show resilience amid economic uncertainty. Investors are closely monitoring central bank policies and corporate earnings reports.',
-                source: 'Market News',
+                title: 'Bitcoin Leads a Fresh Crypto Rally',
+                description: 'Bitcoin pushes higher as traders price in stronger ETF flows.',
+                content: 'Bitcoin and major altcoins are moving higher as institutional flows remain steady and liquidity improves across exchanges.',
+                source: 'Crypto News',
                 author: 'Editorial Team',
                 url: '#',
                 image: null,
                 publishedAt: now.toISOString(),
-                category: 'Markets'
+                category: 'Crypto'
             },
             {
                 id: 'fallback-2',
-                title: 'Cryptocurrency Market Analysis',
-                description: 'Digital assets show mixed performance as regulatory clarity improves.',
-                content: 'Digital assets show mixed performance as regulatory clarity improves across major markets.',
+                title: 'Ethereum Activity Accelerates Across DeFi',
+                description: 'On-chain activity and fee revenue are improving for ETH.',
+                content: 'Ethereum is seeing stronger on-chain activity, with DeFi usage and staking participation supporting broader market sentiment.',
                 source: 'Crypto News',
                 author: 'Editorial Team',
                 url: '#',
@@ -149,15 +144,15 @@ function getFallbackNews() {
             },
             {
                 id: 'fallback-3',
-                title: 'Economic Indicators Point to Steady Growth',
-                description: 'Latest data suggests continued economic expansion.',
-                content: 'Latest economic data suggests continued expansion with moderate inflation.',
-                source: 'Economic Times',
+                title: 'Altcoins Outperform as Risk Appetite Returns',
+                description: 'Smaller-cap tokens are leading the move higher.',
+                content: 'Altcoins are outperforming as traders rotate into higher-beta crypto assets, with meme coins and L1 ecosystems seeing renewed attention.',
+                source: 'Crypto News',
                 author: 'Editorial Team',
                 url: '#',
                 image: null,
                 publishedAt: new Date(now - 4 * 60 * 60 * 1000).toISOString(),
-                category: 'Economy'
+                category: 'Crypto'
             }
         ],
         totalResults: 3,
