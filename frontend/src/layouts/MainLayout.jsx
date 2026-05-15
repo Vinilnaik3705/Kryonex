@@ -56,10 +56,12 @@ const MainLayout = ({ children }) => {
                 <div className="p-5">
                     {/* Logo */}
                     <div className="flex items-center justify-between">
-                        <h1 className="text-xl font-extrabold tracking-tight text-accent flex items-center gap-1.5">
-                            <span className="text-accent/60">⬡</span>
-                            Kryonex
-                        </h1>
+                        <Link to="/dashboard" className="flex items-center gap-2.5 group">
+                            <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center border border-accent/20 group-hover:border-accent/40 transition-all">
+                                <img src="/logo.png" alt="Kryonex Logo" className="w-6 h-6 object-contain" />
+                            </div>
+                            <span className="text-xl font-extrabold tracking-tight text-white group-hover:text-accent transition-colors">Kryonex</span>
+                        </Link>
 
                     </div>
 
@@ -108,9 +110,10 @@ const MainLayout = ({ children }) => {
             {/* Mobile Header */}
             <div className="md:hidden fixed top-0 w-full bg-black/95 backdrop-blur-md z-30 border-b border-[rgba(56,189,248,0.12)]">
                 <div className="p-3 sm:p-4 flex justify-between items-center w-full box-border">
-                    <span className="font-extrabold text-accent flex items-center gap-1.5" style={{ fontSize: 'clamp(14px, 4vw, 18px)' }}>
-                        <span className="text-accent/60 opacity-50">⬡</span> Kryonex
-                    </span>
+                    <Link to="/dashboard" className="flex items-center gap-2">
+                        <img src="/logo.png" alt="Kryonex Logo" className="w-7 h-7 object-contain" />
+                        <span className="font-extrabold text-white" style={{ fontSize: 'clamp(14px, 4vw, 18px)' }}>Kryonex</span>
+                    </Link>
                     <div className="flex items-center gap-2 sm:gap-3">
                         <CurrencyToggle />
 

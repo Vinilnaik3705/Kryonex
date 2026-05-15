@@ -55,8 +55,9 @@ const Landing = () => {
                 }`}>
                 <div className="container mx-auto px-6 flex justify-between items-center">
                     <div className="flex items-center gap-12">
-                        <Link to="/" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="text-2xl font-bold tracking-tight">
-                            Kryonex
+                        <Link to="/" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="flex items-center gap-3 group">
+                            <img src="/logo.png" alt="Kryonex Logo" className="w-9 h-9 object-contain" />
+                            <span className="text-2xl font-bold tracking-tight">Kryonex</span>
                         </Link>
 
                         <div className="hidden lg:flex items-center gap-8 text-sm font-medium">
@@ -251,8 +252,9 @@ const Landing = () => {
 
                             {/* Brand / Contact */}
                             <div className="space-y-6">
-                                <Link to="/" className="text-2xl font-bold tracking-tight text-white block">
-                                    Kryonex
+                                <Link to="/" className="flex items-center gap-3 group">
+                                    <img src="/logo.png" alt="Kryonex Logo" className="w-8 h-8 object-contain" />
+                                    <span className="text-2xl font-bold tracking-tight text-white">Kryonex</span>
                                 </Link>
                                 <p className="text-slate-400 leading-relaxed">
                                     Advanced trading simulation platform for modern investors. Master the markets risk-free.
