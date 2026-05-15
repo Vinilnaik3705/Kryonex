@@ -1,125 +1,70 @@
-# TradeSimPro - Advanced Trading Simulation Platform
+# ⬡ TradeSim - Advanced Trading Simulation Platform
 
-TradeSimPro is a comprehensive real-time trading simulation platform designed to help users master the markets without financial risk. Built with a modern tech stack, it offers advanced charting, real-time market data (Crypto, Stocks, ETFs), and a professional trading interface.
+TradeSim is a high-performance, real-time trading simulation platform designed to help users master the financial markets without risk. Featuring a mobile-first responsive design, advanced AI analysis, and professional-grade data visualization.
 
-## 🚀 Features
+## ✨ Core Features
 
--   **Real-time Market Data**: Live tracking of Cryptocurrencies, Stocks, and ETFs.
--   **Interactive Dashboard**: Portfolio tracking, P/L analysis, and asset allocation visualization.
--   **Advanced Charting**: Professional-grade charts with multiple timeframes and indicators.
--   **Trading Simulation**: Buy and sell assets with virtual currency.
--   **Watchlist**: Track your favorite assets.
--   **News Feed**: Real-time financial news updates.
--   **Responsive Design**: Fully optimized for desktop, tablet, and mobile devices.
+-   **🤖 CryptoSense AI Analyst**: In-app AI companion providing deep-dive analysis on any coin, risk levels, and latest news impact.
+-   **📊 Squarified Treemap Heatmap**: Professional-grade crypto heatmap with market cap sizing and real-time performance tracking.
+-   **📱 Mobile-First Responsive Design**: Completely overhauled UI for seamless trading on any device (Mobile, Tablet, Desktop).
+-   **📈 Real-time Market Data**: Live tracking and analysis for top Cryptocurrencies, Stocks, and ETFs.
+-   **💼 Portfolio Management**: Detailed tracking of holdings, P/L analysis, and dynamic asset allocation charts.
+-   **💹 Professional Charting**: Interactive candlestick charts with multiple timeframes and technical data.
+-   **🛡️ Secure Authentication**: Integrated with Clerk for industry-standard user security and profile management.
+-   **💰 Multi-Currency Support**: Real-time currency conversion (USD, INR, EUR, etc.) across the entire platform.
 
-## 🛠️ Tech Stack
+## 🛠️ Modern Tech Stack
 
 ### Frontend
--   **React 18**: UI Library
--   **Vite**: Build Tool
--   **Tailwind CSS**: Styling
--   **Recharts**: Data Visualization
--   **Lucide React**: Icons
--   **Axios**: API Requests
+-   **React 18**: Component-based UI architecture.
+-   **Vite**: Next-generation frontend tooling.
+-   **Lucide React**: Beautifully consistent icons.
+-   **D3 Hierarchy**: Powers the advanced squarified treemap heatmap.
+-   **Recharts**: Modern data visualization for portfolio analytics.
+-   **Tailwind CSS**: Utility-first styling with custom glassmorphic themes.
 
 ### Backend
--   **Node.js**: Runtime Environment
--   **Express.js**: Web Framework
--   **MongoDB**: Database
--   **Mongoose**: ODM
--   **JWT**: Authentication
--   **Helmet & Compression**: Security & Performance
+-   **Node.js & Express**: Scalable server-side logic.
+-   **MongoDB & Mongoose**: Flexible document-based data storage.
+-   **Claude AI API**: Powers the CryptoSense intelligent analysis engine.
+-   **Clerk**: Secure, scalable authentication and user management.
 
 ## 📋 Prerequisites
 
-Before running the project, ensure you have the following installed:
-
--   [Node.js](https://nodejs.org/) (v16 or higher)
+-   [Node.js](https://nodejs.org/) (v18 or higher)
 -   [MongoDB](https://www.mongodb.com/) (Local or Atlas)
 -   [Git](https://git-scm.com/)
 
-## 🔧 Installation & Setup
+## 🔧 Getting Started
 
 1.  **Clone the Repository**
-
     ```bash
     git clone https://github.com/Vinilnaik3705/TradeSim.git
     cd TradeSim
     ```
 
 2.  **Backend Setup**
-
-    Navigate to the backend directory and install dependencies:
-
     ```bash
     cd backend
     npm install
-    ```
-
-    Create a `.env` file in the `backend` directory:
-
-    ```env
-    PORT=5000
-    NODE_ENV=development
-    MONGO_URI=mongodb://localhost:27017/tradesim
-    JWT_SECRET=your_jwt_secret_key_here
-    FRONTEND_URL=http://localhost:5173
-    NEWS_API_KEY=your_news_api_key
-    ```
-    *Note: Replace `your_news_api_key` with a valid key if required.*
-
-    Start the backend server:
-
-    ```bash
-    npm start
-    # OR for development with auto-reload
+    # Create .env based on .env.example
     npm run dev
     ```
 
 3.  **Frontend Setup**
-
-    Open a new terminal, navigate to the frontend directory, and install dependencies:
-
     ```bash
     cd frontend
     npm install
-    ```
-
-    Create a `.env` file in the `frontend` directory (optional if using defaults):
-
-    ```env
-    VITE_API_BASE_URL=http://localhost:5000/api
-    ```
-
-    Start the development server:
-
-    ```bash
+    # Create .env based on .env.example
     npm run dev
     ```
 
-4.  **Access the Application**
-
-    Open your browser and navigate to:
-    `http://localhost:5173`
-
-## 📦 Deployment
-
-### Backend
-The backend is configured to run on standard Node.js environments. Please Ensure environment variables are set in your production environment (e.g., Render, Railway).
-
-### Frontend
-The frontend can be built for production using:
-
-```bash
-cd frontend
-npm run build
-```
-
-This generates a `dist` folder which can be deployed to static hosting providers like Vercel, Netlify, or Cloudflare Pages.
+4.  **Launch**
+    Navigate to `http://localhost:5173` to start trading.
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
 
 ## 📄 License
 
