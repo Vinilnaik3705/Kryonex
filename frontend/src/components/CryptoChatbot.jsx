@@ -36,6 +36,13 @@ function formatText(text) {
     .replace(/\n/g, '<br/>');
 }
 
+const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
+
+const providerLabel = GROQ_API_KEY ? 'Live · Powered by LLaMA 3.3 on Groq' : 'AI Analyst';
+
+// Keep a compact system prompt similar to backend for consistent behavior when calling Groq directly
+const SYSTEM_PROMPT = `You are Kryonex AI, an elite cryptocurrency analyst AI embedded in the Kryonex trading platform. Provide concise, data-rich analysis and a final risk verdict when asked.`;
+
 const VerdictBadge = ({ verdict }) => {
   if (!verdict) return null;
 
@@ -214,24 +221,55 @@ export default function CryptoChatbot() {
     try {
       abortRef.current = new AbortController();
 
-      const response = await fetch(`${API_BASE_URL}/ai/crypto-chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        signal: abortRef.current.signal,
-        body: JSON.stringify({
-          messages: [...historyMessages, { role: 'user', content: userText.trim() }],
-        }),
-      });
+      // If a Groq API key is provided in the frontend env, call Groq directly.
+      // Otherwise fall back to the backend proxy route.
+      let data;
+      if (GROQ_API_KEY) {
+        const groqResp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${GROQ_API_KEY}`,
+          },
+          signal: abortRef.current.signal,
+          body: JSON.stringify({
+            model: 'llama-3.3-70b-versatile',
+            max_tokens: 1500,
+            messages: [
+              { role: 'system', content: SYSTEM_PROMPT },
+              ...historyMessages,
+              { role: 'user', content: userText.trim() },
+            ],
+          }),
+        });
 
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        throw new Error(err?.error?.message || `API error ${response.status}`);
+        if (!groqResp.ok) {
+          const err = await groqResp.json().catch(() => ({}));
+          throw new Error(err?.error?.message || `API error ${groqResp.status}`);
+        }
+
+        data = await groqResp.json();
+      } else {
+        const response = await fetch(`${API_BASE_URL}/ai/crypto-chat`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          signal: abortRef.current.signal,
+          body: JSON.stringify({
+            messages: [...historyMessages, { role: 'user', content: userText.trim() }],
+          }),
+        });
+
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err?.error?.message || `API error ${response.status}`);
+        }
+
+        data = await response.json();
       }
 
-      const data = await response.json();
-      const content = data?.content || '';
+      const content = data?.content || data?.choices?.[0]?.message?.content || data?.choices?.[0]?.text || '';
 
       setMessages((prev) => {
         const updated = [...prev];
@@ -371,7 +409,7 @@ export default function CryptoChatbot() {
                 <div className="flex items-center gap-1.5 mt-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">
-                    {isStreaming ? 'Thinking...' : 'AI Analyst'}
+                    {isStreaming ? 'Thinking...' : providerLabel}
                   </span>
                 </div>
               </div>

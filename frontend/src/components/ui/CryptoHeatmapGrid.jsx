@@ -60,13 +60,15 @@ function Sparkline({ data, color }) {
     const min = Math.min(...data);
     const max = Math.max(...data);
     const w = 260, h = 60;
+    // Generate points in a fixed coordinate space then let the SVG scale to container width
     const pts = data.map((v, i) => {
         const x = (i / (data.length - 1)) * w;
         const y = h - ((v - min) / (max - min || 1)) * h;
         return `${x},${y}`;
     }).join(' ');
+
     return (
-        <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ overflow: 'visible' }}>
+        <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ overflow: 'visible' }}>
             <polyline points={pts} fill="none" stroke={color} strokeWidth="2"
                 strokeLinecap="round" strokeLinejoin="round" />
         </svg>

@@ -280,8 +280,9 @@ const CandlestickChart = ({
     useEffect(() => {
         if (!chartContainerRef.current) return undefined;
 
+        const initialWidth = chartContainerRef.current.clientWidth || Math.max(320, Math.floor(window.innerWidth * 0.9));
         const chart = createChart(chartContainerRef.current, {
-            width: chartContainerRef.current.clientWidth,
+            width: initialWidth,
             height,
             layout: {
                 background: { color: '#0a0a0a' },
@@ -379,7 +380,7 @@ const CandlestickChart = ({
         resizeObserverRef.current = new ResizeObserver(() => {
             if (chartContainerRef.current && chartRef.current) {
                 chartRef.current.applyOptions({
-                    width: chartContainerRef.current.clientWidth,
+                    width: Math.max(320, chartContainerRef.current.clientWidth || Math.floor(window.innerWidth * 0.9)),
                 });
             }
         });
