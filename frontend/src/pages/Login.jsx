@@ -76,6 +76,8 @@ export default function Login() {
                 </div>
 
                 <SignIn 
+                    routing="path"
+                    path="/login"
                     appearance={{
                         baseTheme: "dark",
                         variables: {
@@ -101,6 +103,7 @@ export default function Login() {
                             footerActionText: "!text-text-muted/80 !text-sm",
                         }
                     }}
+                    afterSignInUrl="/dashboard"
                     fallbackRedirectUrl="/dashboard"
                     signUpUrl="/register"
                 />

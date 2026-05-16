@@ -54,7 +54,6 @@ const simulationStateSchema = new mongoose.Schema({
         type: String,
         required: true,
         unique: true,
-        index: true,
     },
     walletBalance: {
         type: Number,
@@ -71,7 +70,5 @@ const simulationStateSchema = new mongoose.Schema({
 }, {
     timestamps: true,
 });
-
-simulationStateSchema.index({ userId: 1 }, { unique: true });
 
 module.exports = mongoose.model('SimulationState', simulationStateSchema);

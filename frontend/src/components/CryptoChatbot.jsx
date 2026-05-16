@@ -310,34 +310,36 @@ export default function CryptoChatbot() {
           gap: 12
         }}
       >
-        {!isOpen && messages.length === 0 && (
+        {!isMobile && !isOpen && messages.length === 0 && (
           <div className="animate-fadeSlideUp bg-[#0f1923] border border-sky-500/25 rounded-xl px-3.5 py-2.5 shadow-xl shadow-black/40 max-w-[200px]">
             <p className="text-white text-xs font-medium leading-snug">Ask AI about any crypto coin 🔍</p>
             <p className="text-slate-500 text-[11px] mt-0.5">Risk analysis · News · Trends</p>
           </div>
         )}
 
-        <button
-          onClick={() => setIsOpen((v) => !v)}
-          style={{
-            width: 52,
-            height: 52,
-            borderRadius: '50%',
-            background: 'linear-gradient(135deg, #38bdf8, #6366f1)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-            border: 'none',
-            cursor: 'pointer',
-            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-          }}
-          className="active:scale-90 hover:scale-105"
-          aria-label="Open Crypto AI Analyst"
-        >
-          {isOpen ? <ChevronDown size={24} color="#fff" /> : <Bot size={24} color="#fff" />}
-          {hasUnread && !isOpen && <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 border-2 border-[#0d1f2d] animate-bounce" />}
-        </button>
+        {!(isMobile && isOpen) && (
+          <button
+            onClick={() => setIsOpen((v) => !v)}
+            style={{
+              width: 52,
+              height: 52,
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #38bdf8, #6366f1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+            }}
+            className="active:scale-90 hover:scale-105"
+            aria-label="Open Crypto AI Analyst"
+          >
+            {isOpen ? <ChevronDown size={24} color="#fff" /> : <Bot size={24} color="#fff" />}
+            {hasUnread && !isOpen && <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 border-2 border-[#0d1f2d] animate-bounce" />}
+          </button>
+        )}
       </div>
 
       {isOpen && (

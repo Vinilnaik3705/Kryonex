@@ -90,6 +90,8 @@ export default function Register() {
                 </div>
 
                 <SignUp
+                    routing="path"
+                    path="/register"
                     appearance={{
                         baseTheme: "dark",
                         variables: {
@@ -115,6 +117,7 @@ export default function Register() {
                             footerActionText: "!text-text-muted/80 !text-sm",
                         }
                     }}
+                    afterSignUpUrl="/dashboard"
                     fallbackRedirectUrl="/dashboard"
                     signInUrl="/login"
                 />

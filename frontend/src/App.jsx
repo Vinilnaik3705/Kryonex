@@ -23,6 +23,8 @@ import { CurrencyProvider } from './context/CurrencyContext';
 import { CoinLogoProvider } from './context/CoinLogoContext';
 import { useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
+import { useAuth } from './context/AuthContext';
+import { Loader } from 'lucide-react';
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -32,6 +34,25 @@ const ScrollToTop = () => {
   }, [pathname]);
 
   return null;
+};
+
+const AuthenticatedRedirect = ({ children }) => {
+  const { user, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-primary flex items-center justify-center">
+        <Loader className="animate-spin text-accent" size={40} />
+      </div>
+    );
+  }
+
+  if (user && ['/', '/login', '/register'].includes(location.pathname)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return children;
 };
 
 function App() {
@@ -53,68 +74,70 @@ function App() {
                   <Router>
                 <ScrollToTop />
                 <div className="min-h-screen bg-primary text-white font-sans antialiased selection:bg-accent selection:text-white transition-colors duration-300">
-                  <Routes>
-                    <Route path="/" element={<Landing />} />
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/register" element={<Register />} />
+                  <AuthenticatedRedirect>
+                    <Routes>
+                      <Route path="/" element={<Landing />} />
+                      <Route path="/login" element={<Login />} />
+                      <Route path="/register" element={<Register />} />
 
                     {/* Protected Routes */}
-                    <Route path="/dashboard" element={
-                      <ProtectedRoute>
-                        <Dashboard />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/markets" element={
-                      <ProtectedRoute>
-                        <Markets />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/trade/:assetId" element={
-                      <ProtectedRoute>
-                        <Trade />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/portfolio" element={
-                      <ProtectedRoute>
-                        <Portfolio />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/watchlist" element={
-                      <ProtectedRoute>
-                        <Watchlist />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/settings" element={
-                      <ProtectedRoute>
-                        <Settings />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/heatmap" element={
-                      <ProtectedRoute>
-                        <Heatmap />
-                      </ProtectedRoute>
-                    } />
+                      <Route path="/dashboard" element={
+                        <ProtectedRoute>
+                          <Dashboard />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/markets" element={
+                        <ProtectedRoute>
+                          <Markets />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/trade/:assetId" element={
+                        <ProtectedRoute>
+                          <Trade />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/portfolio" element={
+                        <ProtectedRoute>
+                          <Portfolio />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/watchlist" element={
+                        <ProtectedRoute>
+                          <Watchlist />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/settings" element={
+                        <ProtectedRoute>
+                          <Settings />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/heatmap" element={
+                        <ProtectedRoute>
+                          <Heatmap />
+                        </ProtectedRoute>
+                      } />
 
                     {/* Payment Route (not in navigation) */}
-                    <Route path="/payment" element={
-                      <ProtectedRoute>
-                        <Payment />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/news/:id" element={
-                      <ProtectedRoute>
-                        <NewsDetail />
-                      </ProtectedRoute>
-                    } />
+                      <Route path="/payment" element={
+                        <ProtectedRoute>
+                          <Payment />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/news/:id" element={
+                        <ProtectedRoute>
+                          <NewsDetail />
+                        </ProtectedRoute>
+                      } />
 
                     {/* Project Routes */}
-                    <Route path="/documentation" element={<Placeholder title="Documentation" />} />
-                    <Route path="/features" element={<Placeholder title="Features List" />} />
-                    <Route path="/updates" element={<Placeholder title="Updates" />} />
+                      <Route path="/documentation" element={<Placeholder title="Documentation" />} />
+                      <Route path="/features" element={<Placeholder title="Features List" />} />
+                      <Route path="/updates" element={<Placeholder title="Updates" />} />
 
                     {/* Fallback */}
-                    <Route path="*" element={<Navigate to="/" replace />} />
-                  </Routes>
+                      <Route path="*" element={<Navigate to="/" replace />} />
+                    </Routes>
+                  </AuthenticatedRedirect>
                 </div>
                   </Router>
                 </CurrencyProvider>
