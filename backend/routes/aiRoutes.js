@@ -3,7 +3,8 @@ const axios = require('axios');
 
 const router = express.Router();
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
+const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
 
 const SYSTEM_PROMPT = `You are Kryonex AI, an elite cryptocurrency analyst AI embedded in the Kryonex trading platform.
 
@@ -32,13 +33,6 @@ Keep responses concise but data-rich. Use **bold** for key numbers and terms. Us
 
 router.post('/crypto-chat', async (req, res) => {
     try {
-        if (!OPENAI_API_KEY) {
-            return res.status(500).json({
-                success: false,
-                error: 'OpenAI API key is not configured on the backend.'
-            });
-        }
-
         const { messages } = req.body || {};
 
         if (!Array.isArray(messages) || messages.length === 0) {
@@ -48,21 +42,34 @@ router.post('/crypto-chat', async (req, res) => {
             });
         }
 
+        const providerMessages = [
+            { role: 'system', content: SYSTEM_PROMPT },
+            ...messages,
+        ];
+
+        const requestBody = {
+            temperature: 0.4,
+            max_tokens: 1500,
+            messages: providerMessages,
+        };
+
+        if (!GROQ_API_KEY) {
+            return res.status(500).json({
+                success: false,
+                error: 'No AI provider key is configured on the backend. Set GROQ_API_KEY.',
+            });
+        }
+
         const response = await axios.post(
-            'https://api.openai.com/v1/chat/completions',
+            GROQ_ENDPOINT,
             {
-                model: 'gpt-4o',
-                temperature: 0.4,
-                max_tokens: 1500,
-                messages: [
-                    { role: 'system', content: SYSTEM_PROMPT },
-                    ...messages,
-                ],
+                ...requestBody,
+                model: 'llama-3.3-70b-versatile',
             },
             {
                 headers: {
                     'content-type': 'application/json',
-                    Authorization: `Bearer ${OPENAI_API_KEY}`,
+                    Authorization: `Bearer ${GROQ_API_KEY}`,
                 },
                 timeout: 90000,
             }
