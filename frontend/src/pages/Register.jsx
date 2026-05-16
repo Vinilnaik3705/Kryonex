@@ -117,7 +117,7 @@ export default function Register() {
                             footerActionText: "!text-text-muted/80 !text-sm",
                         }
                     }}
-                    afterSignUpUrl="/dashboard"
+                    forceRedirectUrl="/dashboard"
                     fallbackRedirectUrl="/dashboard"
                     signInUrl="/login"
                 />

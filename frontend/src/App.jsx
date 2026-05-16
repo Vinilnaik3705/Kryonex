@@ -13,7 +13,11 @@ import Settings from './pages/Settings';
 import Heatmap from './pages/Heatmap';
 import Payment from './pages/Payment';
 import NewsDetail from './pages/NewsDetail';
-import Placeholder from './pages/Placeholder';
+import Documentation from './pages/Documentation';
+import Features from './pages/Features';
+import Updates from './pages/Updates';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
 import ErrorBoundary from './components/ErrorBoundary';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider } from './context/AuthContext';
@@ -130,9 +134,11 @@ function App() {
                       } />
 
                     {/* Project Routes */}
-                      <Route path="/documentation" element={<Placeholder title="Documentation" />} />
-                      <Route path="/features" element={<Placeholder title="Features List" />} />
-                      <Route path="/updates" element={<Placeholder title="Updates" />} />
+                      <Route path="/documentation" element={<Documentation />} />
+                      <Route path="/features" element={<Features />} />
+                      <Route path="/updates" element={<Updates />} />
+                      <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                      <Route path="/terms-of-service" element={<TermsOfService />} />
 
                     {/* Fallback */}
                       <Route path="*" element={<Navigate to="/" replace />} />

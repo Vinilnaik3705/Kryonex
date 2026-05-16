@@ -103,7 +103,7 @@ export default function Login() {
                             footerActionText: "!text-text-muted/80 !text-sm",
                         }
                     }}
-                    afterSignInUrl="/dashboard"
+                    forceRedirectUrl="/dashboard"
                     fallbackRedirectUrl="/dashboard"
                     signUpUrl="/register"
                 />
