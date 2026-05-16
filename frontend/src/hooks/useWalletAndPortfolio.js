@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import API_BASE_URL from '../config/api';
 import { useAuth } from '../context/AuthContext';
@@ -13,7 +13,7 @@ const PORTFOLIO_KEY = 'portfolio_holdings';
  * Handles buy/sell transactions, balance tracking, and P&L calculations
  */
 export const useWalletAndPortfolio = () => {
-    const { user } = useAuth();
+    const { user, getToken } = useAuth();
     const walletStorageKey = buildUserScopedStorageKey(WALLET_KEY, user?.id);
     const portfolioStorageKey = buildUserScopedStorageKey(PORTFOLIO_KEY, user?.id);
 
@@ -22,6 +22,7 @@ export const useWalletAndPortfolio = () => {
     const [storageReady, setStorageReady] = useState(false);
 
     const [livePrices, setLivePrices] = useState({});
+    const syncTimerRef = useRef(null);
 
     useEffect(() => {
         let isActive = true;
@@ -65,6 +66,47 @@ export const useWalletAndPortfolio = () => {
         };
     }, [walletStorageKey, portfolioStorageKey]);
 
+    const getAuthHeaders = useCallback(async () => {
+        const token = await getToken?.();
+        if (!token) return {};
+        return { Authorization: `Bearer ${token}` };
+    }, [getToken]);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        const loadRemoteState = async () => {
+            if (!user?.id || !getToken) return;
+
+            try {
+                const headers = await getAuthHeaders();
+                if (!headers.Authorization) return;
+
+                const response = await axios.get(`${API_BASE_URL}/simulation/state`, { headers });
+                const remote = response.data?.data || {};
+
+                if (cancelled) return;
+
+                const remoteWallet = Number(remote.walletBalance);
+                const remotePortfolio = Array.isArray(remote.portfolioHoldings) ? remote.portfolioHoldings : [];
+
+                if (Number.isFinite(remoteWallet)) {
+                    setWalletBalance(remoteWallet);
+                }
+                setPortfolioHoldings(remotePortfolio.filter((holding) => (holding.type || 'crypto') === 'crypto'));
+                setStorageReady(true);
+            } catch (error) {
+                console.warn('Remote simulation state load failed, falling back to local storage:', error?.message || error);
+            }
+        };
+
+        loadRemoteState();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [user?.id, getToken, getAuthHeaders]);
+
     // Persist wallet balance to localStorage
     useEffect(() => {
         if (!storageReady) return;
@@ -87,6 +129,40 @@ export const useWalletAndPortfolio = () => {
             console.error('Failed to save portfolio:', e);
         }
     }, [portfolioHoldings, storageReady, portfolioStorageKey]);
+
+    useEffect(() => {
+        if (!storageReady || !user?.id) return undefined;
+
+        const syncRemoteState = async () => {
+            try {
+                const headers = await getAuthHeaders();
+                if (!headers.Authorization) return;
+
+                await axios.put(
+                    `${API_BASE_URL}/simulation/state`,
+                    {
+                        walletBalance,
+                        portfolioHoldings,
+                    },
+                    { headers }
+                );
+            } catch (error) {
+                console.warn('Failed to sync simulation state to backend:', error?.message || error);
+            }
+        };
+
+        if (syncTimerRef.current) {
+            clearTimeout(syncTimerRef.current);
+        }
+
+        syncTimerRef.current = setTimeout(syncRemoteState, 800);
+
+        return () => {
+            if (syncTimerRef.current) {
+                clearTimeout(syncTimerRef.current);
+            }
+        };
+    }, [walletBalance, portfolioHoldings, storageReady, user?.id, getAuthHeaders]);
 
     // Fetch live prices for all holdings
     useEffect(() => {

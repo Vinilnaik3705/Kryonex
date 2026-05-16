@@ -272,6 +272,8 @@ export default function Watchlist() {
                 isOpen={!!selectedAsset}
                 onClose={() => setSelectedAsset(null)}
                 asset={selectedAsset}
+                isInWatchlist={selectedAsset ? isInWatchlist(selectedAsset.id) : false}
+                onToggleWatchlist={toggleWatchlist}
             />
         </MainLayout>
     );

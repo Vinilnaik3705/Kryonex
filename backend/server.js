@@ -8,6 +8,7 @@ const cryptoRoutes = require("./routes/cryptoRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
 const newsRoutes = require("./routes/newsRoutes");
 const aiRoutes = require("./routes/aiRoutes");
+const simulationRoutes = require("./routes/simulationRoutes");
 const coinLogos = require("./routes/coinLogos");
 const errorHandler = require("./middleware/errorHandler");
 const rateLimiter = require("./middleware/rateLimiter");
@@ -57,6 +58,7 @@ app.use("/api/crypto", cryptoRoutes);
 app.use("/api/payment", paymentRoutes);
 app.use("/api/news", newsRoutes);
 app.use("/api/ai", aiRoutes);
+app.use("/api/simulation", simulationRoutes);
 app.use("/api/coin-logos", coinLogos);
 app.use("/api/auth", require("./routes/authRoutes"));
 

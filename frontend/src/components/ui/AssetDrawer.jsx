@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, TrendingUp, TrendingDown, DollarSign, Activity, BarChart2, ArrowUpRight } from 'lucide-react';
+import { X, TrendingUp, TrendingDown, DollarSign, Activity, BarChart2, ArrowUpRight, Star } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { formatPrice } from '../../utils/formatPrice';
 import { useCurrency } from '../../context/CurrencyContext';
@@ -19,7 +19,7 @@ const mockChartData = [
     { time: '16:00', value: 45230 },
 ];
 
-const AssetDrawer = ({ isOpen, onClose, asset }) => {
+const AssetDrawer = ({ isOpen, onClose, asset, isInWatchlist = false, onToggleWatchlist }) => {
     const [activeTab, setActiveTab] = useState('buy'); // 'buy' or 'sell'
     const [amount, setAmount] = useState('');
     const { currency, convert } = useCurrency();
@@ -68,9 +68,22 @@ const AssetDrawer = ({ isOpen, onClose, asset }) => {
                                     </div>
                                 </div>
                             </div>
-                            <button onClick={onClose} className="p-2 hover:bg-white/[0.06] rounded-xl transition-colors text-[rgba(255,255,255,0.3)] hover:text-white">
-                                <X size={20} />
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onToggleWatchlist?.(asset.id);
+                                    }}
+                                    className={`p-2 rounded-xl transition-colors border ${isInWatchlist ? 'bg-yellow-400/10 border-yellow-400/20 text-yellow-400' : 'bg-white/[0.03] border-white/[0.06] text-[rgba(255,255,255,0.35)] hover:text-yellow-400 hover:bg-yellow-400/10'}`}
+                                    aria-label={isInWatchlist ? 'Remove from wishlist' : 'Add to wishlist'}
+                                    title={isInWatchlist ? 'Remove from wishlist' : 'Add to wishlist'}
+                                >
+                                    <Star size={18} fill={isInWatchlist ? 'currentColor' : 'none'} />
+                                </button>
+                                <button onClick={onClose} className="p-2 hover:bg-white/[0.06] rounded-xl transition-colors text-[rgba(255,255,255,0.3)] hover:text-white">
+                                    <X size={20} />
+                                </button>
+                            </div>
                         </div>
 
                         {/* Scrollable Content */}
