@@ -16,12 +16,7 @@ const connectDB = require("./config/db");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-
-app.use(helmet());
-app.use(compression());
-
-// Middleware
-app.use(cors({
+const corsOptions = {
     origin: [
         "http://localhost:5173",
         "http://localhost:3000",
@@ -30,8 +25,17 @@ app.use(cors({
         "https://tradesim-9yh.pages.dev",
         /^https:\/\/.*\.tradesim-9yh\.pages\.dev$/
     ],
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true
-}));
+};
+
+app.use(helmet());
+app.use(compression());
+
+// Middleware
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -71,8 +75,10 @@ app.use((req, res) => {
 
 app.use(errorHandler);
 
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
+if (require.main === module && !process.env.VERCEL) {
+    app.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+    });
+}
 
 module.exports = app;
