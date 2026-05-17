@@ -16,7 +16,7 @@ import NewsDetail from './pages/NewsDetail';
 import Documentation from './pages/Documentation';
 import Features from './pages/Features';
 import Updates from './pages/Updates';
-import PrivacyPolicy from './pages/PrivacyPolicy';
+import PrivacyPolicy from './pages/KryonexPrivacy';
 import TermsOfService from './pages/TermsOfService';
 import ErrorBoundary from './components/ErrorBoundary';
 import ProtectedRoute from './components/ProtectedRoute';
