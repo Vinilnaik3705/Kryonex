@@ -27,6 +27,7 @@ import { CurrencyProvider } from './context/CurrencyContext';
 import { CoinLogoProvider } from './context/CoinLogoContext';
 import { useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
+import { useAuth as useClerkAuth } from '@clerk/clerk-react';
 import { useAuth } from './context/AuthContext';
 import { Loader } from 'lucide-react';
 
@@ -41,10 +42,10 @@ const ScrollToTop = () => {
 };
 
 const AuthenticatedRedirect = ({ children }) => {
-  const { user, loading } = useAuth();
+  const { isLoaded, isSignedIn } = useClerkAuth();
   const location = useLocation();
 
-  if (loading) {
+  if (!isLoaded) {
     return (
       <div className="min-h-screen bg-primary flex items-center justify-center">
         <Loader className="animate-spin text-accent" size={40} />
@@ -52,7 +53,7 @@ const AuthenticatedRedirect = ({ children }) => {
     );
   }
 
-  if (user && ['/', '/login', '/register'].includes(location.pathname)) {
+  if (isSignedIn && ['/', '/login', '/register'].includes(location.pathname)) {
     return <Navigate to="/dashboard" replace />;
   }
 
