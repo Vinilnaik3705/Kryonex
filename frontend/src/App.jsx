@@ -68,7 +68,11 @@ function App() {
   }
 
   return (
-    <ClerkProvider publishableKey={clerkPubKey}>
+    <ClerkProvider
+      publishableKey={clerkPubKey}
+      signInForceRedirectUrl="/dashboard"
+      signUpForceRedirectUrl="/dashboard"
+    >
       <ErrorBoundary>
         <AuthProvider>
           <MarketProvider>
