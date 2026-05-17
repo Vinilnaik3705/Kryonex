@@ -1,37 +1,26 @@
 import React, { createContext, useContext, useEffect } from 'react';
-import { useAuth as useClerkAuth, useUser, useClerk } from '@clerk/clerk-react';
+import { useAuth as useClerkAuth, useUser, useClerk, useSession } from '@clerk/clerk-react';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
     const { isLoaded, isSignedIn, getToken, sessionId } = useClerkAuth();
     const { user } = useUser();
+    const { session } = useSession();
 
     const { signOut } = useClerk();
 
     useEffect(() => {
-        if (!isLoaded) return undefined;
-
-        const sessionStartKey = user?.id ? `kryonex_session_started_at:${user.id}` : null;
-
-        if (isSignedIn && sessionStartKey) {
-            const existing = Number(localStorage.getItem(sessionStartKey));
-            if (!Number.isFinite(existing)) {
-                localStorage.setItem(sessionStartKey, Date.now().toString());
-            }
-        }
+        if (!isLoaded || !session) return undefined;
 
         const checkExpiry = async () => {
-            if (!isSignedIn || !sessionStartKey) return;
+            if (!isSignedIn || !session.createdAt) return;
 
-            const startedAt = Number(localStorage.getItem(sessionStartKey));
-            if (!Number.isFinite(startedAt)) return;
-
+            const startedAt = new Date(session.createdAt).getTime();
             const ageMs = Date.now() - startedAt;
             const maxAgeMs = 24 * 60 * 60 * 1000;
 
             if (ageMs >= maxAgeMs) {
-                localStorage.removeItem(sessionStartKey);
                 await signOut();
             }
         };
@@ -40,7 +29,7 @@ export const AuthProvider = ({ children }) => {
         const interval = setInterval(checkExpiry, 5 * 60 * 1000);
 
         return () => clearInterval(interval);
-    }, [isLoaded, isSignedIn, signOut, user?.id]);
+    }, [isLoaded, isSignedIn, signOut, session]);
 
     // Map Clerk's auth state to our context for compatibility
     const authContextValue = {
@@ -56,9 +45,6 @@ export const AuthProvider = ({ children }) => {
         getToken,
         loading: !isLoaded,
         logout: async () => {
-            if (user?.id) {
-                localStorage.removeItem(`kryonex_session_started_at:${user.id}`);
-            }
             await signOut();
         },
     };
