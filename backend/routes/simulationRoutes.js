@@ -1,10 +1,8 @@
 const express = require('express');
-const { requireAuth } = require('@clerk/express');
 const SimulationState = require('../models/SimulationState');
+const { protect } = require('../middleware/authMiddleware');
 
 const router = express.Router();
-
-const protect = requireAuth();
 
 const saveSimulationState = async (req, res) => {
     try {

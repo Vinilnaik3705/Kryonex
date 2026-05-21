@@ -17,7 +17,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@clerk/express": "^2.1.15",
     "axios": "^1.6.2",
     "bcryptjs": "^3.0.3",
     "compression": "^1.8.1",

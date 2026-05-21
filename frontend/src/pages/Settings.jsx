@@ -3,11 +3,9 @@ import MainLayout from '../layouts/MainLayout';
 import { User, Shield, Sun, Smartphone, Key } from 'lucide-react';
 import BentoCard from '../components/ui/BentoCard';
 import { useAuth } from '../context/AuthContext';
-import { useClerk } from '@clerk/clerk-react';
 
 export default function Settings() {
     const { user } = useAuth();
-    const { openUserProfile } = useClerk();
 
     return (
         <MainLayout>
@@ -25,9 +23,16 @@ export default function Settings() {
                         <div>
                             <h3 className="text-lg font-extrabold text-white">{user?.name || 'Your Name'}</h3>
                             <p className="text-[rgba(255,255,255,0.4)] text-[13px]">{user?.email || 'you@example.com'}</p>
-                            <button onClick={() => openUserProfile()} className="text-accent text-[12px] font-bold mt-1.5 hover:text-white transition-colors">
-                                Change Avatar / Profile
-                            </button>
+                            {user?.provider === 'google' && (
+                                <a href="https://myaccount.google.com/profile" target="_blank" rel="noopener noreferrer" className="text-accent text-[12px] font-bold mt-1.5 hover:text-white transition-colors inline-block">
+                                    Change Profile via Google ↗
+                                </a>
+                            )}
+                            {user?.provider === 'github' && (
+                                <a href="https://github.com/settings/profile" target="_blank" rel="noopener noreferrer" className="text-accent text-[12px] font-bold mt-1.5 hover:text-white transition-colors inline-block">
+                                    Change Profile via GitHub ↗
+                                </a>
+                            )}
                         </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

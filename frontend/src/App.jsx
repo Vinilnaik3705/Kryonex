@@ -1,6 +1,5 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ClerkProvider } from '@clerk/clerk-react';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -19,15 +18,13 @@ import PrivacyPolicy from './pages/KryonexPrivacy';
 import TermsOfService from './pages/TermsOfService';
 import ErrorBoundary from './components/ErrorBoundary';
 import ProtectedRoute from './components/ProtectedRoute';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { MarketProvider } from './context/MarketContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { CurrencyProvider } from './context/CurrencyContext';
 import { CoinLogoProvider } from './context/CoinLogoContext';
 import { useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
-import { useAuth as useClerkAuth } from '@clerk/clerk-react';
-import { useAuth } from './context/AuthContext';
 import { Loader } from 'lucide-react';
 
 const ScrollToTop = () => {
@@ -41,7 +38,7 @@ const ScrollToTop = () => {
 };
 
 const AuthenticatedRedirect = ({ children }) => {
-  const { isLoaded, isSignedIn } = useClerkAuth();
+  const { isLoaded, isSignedIn } = useAuth();
   const location = useLocation();
 
   if (!isLoaded) {
@@ -60,103 +57,90 @@ const AuthenticatedRedirect = ({ children }) => {
 };
 
 function App() {
-  // Get Clerk Publishable Key from environment
-  const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
-
-  if (!clerkPubKey) {
-    return <div>Error: Clerk Publishable Key not found. Please add VITE_CLERK_PUBLISHABLE_KEY to your .env file.</div>;
-  }
-
   return (
-    <ClerkProvider
-      publishableKey={clerkPubKey}
-      signInForceRedirectUrl="/dashboard"
-      signUpForceRedirectUrl="/dashboard"
-    >
-      <ErrorBoundary>
-        <AuthProvider>
-          <MarketProvider>
-            <ThemeProvider>
-              <CoinLogoProvider>
-                <CurrencyProvider>
-                  <Router>
-                <ScrollToTop />
-                <div className="min-h-screen bg-primary text-white font-sans antialiased selection:bg-accent selection:text-white transition-colors duration-300">
-                  <AuthenticatedRedirect>
-                    <Routes>
-                      <Route path="/" element={<Landing />} />
-                      <Route path="/login" element={<Login />} />
-                      <Route path="/register" element={<Register />} />
+    <ErrorBoundary>
+      <AuthProvider>
+        <MarketProvider>
+          <ThemeProvider>
+            <CoinLogoProvider>
+              <CurrencyProvider>
+                <Router>
+                  <ScrollToTop />
+                  <div className="min-h-screen bg-primary text-white font-sans antialiased selection:bg-accent selection:text-white transition-colors duration-300">
+                    <AuthenticatedRedirect>
+                      <Routes>
+                        <Route path="/" element={<Landing />} />
+                        <Route path="/login" element={<Login />} />
+                        <Route path="/register" element={<Register />} />
 
-                    {/* Protected Routes */}
-                      <Route path="/dashboard" element={
-                        <ProtectedRoute>
-                          <Dashboard />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/markets" element={
-                        <ProtectedRoute>
-                          <Markets />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/trade/:assetId" element={
-                        <ProtectedRoute>
-                          <Trade />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/portfolio" element={
-                        <ProtectedRoute>
-                          <Portfolio />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/watchlist" element={
-                        <ProtectedRoute>
-                          <Watchlist />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/settings" element={
-                        <ProtectedRoute>
-                          <Settings />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/heatmap" element={
-                        <ProtectedRoute>
-                          <Heatmap />
-                        </ProtectedRoute>
-                      } />
+                      {/* Protected Routes */}
+                        <Route path="/dashboard" element={
+                          <ProtectedRoute>
+                            <Dashboard />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="/markets" element={
+                          <ProtectedRoute>
+                            <Markets />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="/trade/:assetId" element={
+                          <ProtectedRoute>
+                            <Trade />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="/portfolio" element={
+                          <ProtectedRoute>
+                            <Portfolio />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="/watchlist" element={
+                          <ProtectedRoute>
+                            <Watchlist />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="/settings" element={
+                          <ProtectedRoute>
+                            <Settings />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="/heatmap" element={
+                          <ProtectedRoute>
+                            <Heatmap />
+                          </ProtectedRoute>
+                        } />
 
-                    {/* Payment Route (not in navigation) */}
-                      <Route path="/payment" element={
-                        <ProtectedRoute>
-                          <Payment />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/news/:id" element={
-                        <ProtectedRoute>
-                          <NewsDetail />
-                        </ProtectedRoute>
-                      } />
+                      {/* Payment Route (not in navigation) */}
+                        <Route path="/payment" element={
+                          <ProtectedRoute>
+                            <Payment />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="/news/:id" element={
+                          <ProtectedRoute>
+                            <NewsDetail />
+                          </ProtectedRoute>
+                        } />
 
-                    {/* Project Routes */}
-                      <Route path="/documentation" element={<Documentation />} />
-                      <Route path="/features" element={<Features />} />
-                      <Route path="/updates" element={<Updates />} />
-                      <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-                      <Route path="/terms-of-service" element={<TermsOfService />} />
+                      {/* Project Routes */}
+                        <Route path="/documentation" element={<Documentation />} />
+                        <Route path="/features" element={<Features />} />
+                        <Route path="/updates" element={<Updates />} />
+                        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                        <Route path="/terms-of-service" element={<TermsOfService />} />
 
-                    {/* Fallback */}
-                      <Route path="*" element={<Navigate to="/" replace />} />
-                    </Routes>
-                  </AuthenticatedRedirect>
-                </div>
-                  </Router>
-                </CurrencyProvider>
-              </CoinLogoProvider>
-            </ThemeProvider>
-          </MarketProvider>
-        </AuthProvider>
-      </ErrorBoundary>
-    </ClerkProvider>
+                      {/* Fallback */}
+                        <Route path="*" element={<Navigate to="/" replace />} />
+                      </Routes>
+                    </AuthenticatedRedirect>
+                  </div>
+                </Router>
+              </CurrencyProvider>
+            </CoinLogoProvider>
+          </ThemeProvider>
+        </MarketProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 

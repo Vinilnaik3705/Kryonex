@@ -3,7 +3,6 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const compression = require("compression");
-const { clerkMiddleware } = require("@clerk/express");
 const cryptoRoutes = require("./routes/cryptoRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
 const newsRoutes = require("./routes/newsRoutes");
@@ -39,8 +38,6 @@ app.options("*", cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Clerk middleware
-app.use(clerkMiddleware());
 
 connectDB();
 

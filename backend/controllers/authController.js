@@ -1,18 +1,17 @@
-// @desc    Get current authenticated user from Clerk
+// @desc    Get current authenticated user from Supabase
 // @route   GET /api/auth/me
 // @access  Private
 const getMe = async (req, res) => {
     try {
-        // Clerk provides user info via req.auth
+        // authMiddleware provides user info via req.auth
         if (!req.auth?.userId) {
             return res.status(401).json({ message: 'Not authenticated' });
         }
 
-        // Return the Clerk user info
+        // Return the Supabase user info
         res.status(200).json({
             userId: req.auth.userId,
-            sessionId: req.auth.sessionId,
-            // Add more fields as needed from your app
+            email: req.auth.email
         });
     } catch (error) {
         console.error('Error fetching user:', error);
