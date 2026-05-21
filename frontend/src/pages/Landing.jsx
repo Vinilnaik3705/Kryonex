@@ -141,9 +141,9 @@ const Landing = () => {
                         Analyze the market. Profit in both bull and bear phases.
                     </p>
                     <div className="pt-8">
-                        <button onClick={() => scrollToSection('markets')} className="bg-white text-black hover:bg-slate-200 px-8 py-4 rounded-full font-bold text-lg transition-all hover:scale-105 active:scale-95">
+                        <Link to={user ? "/dashboard" : "/login"} className="inline-block bg-white text-black hover:bg-slate-200 px-8 py-4 rounded-full font-bold text-lg transition-all hover:scale-105 active:scale-95">
                             Start Trading Now
-                        </button>
+                        </Link>
                     </div>
                 </div>
             </header>
