@@ -4,14 +4,14 @@ Kryonex is a high-performance, real-time trading simulation platform designed to
 
 ## ✨ Core Features
 
--   **🤖 CryptoSense AI Analyst**: In-app AI companion providing deep-dive analysis on any coin, risk levels, and latest news impact.
+-   **🤖 Kryonex AI Analyst**: In-app AI companion providing deep-dive analysis on any coin, risk levels, and latest news impact.
 -   **📊 Squarified Treemap Heatmap**: Professional-grade crypto heatmap with market cap sizing and real-time performance tracking.
 -   **📱 Mobile-First Responsive Design**: Completely overhauled UI for seamless trading on any device (Mobile, Tablet, Desktop).
--   **📈 Real-time Market Data**: Live tracking and analysis for top Cryptocurrencies, Stocks, and ETFs.
+-   **📈 Real-time Market Data**: Live tracking and analysis for top Cryptocurrencies.
 -   **💼 Portfolio Management**: Detailed tracking of holdings, P/L analysis, and dynamic asset allocation charts.
 -   **💹 Professional Charting**: Interactive candlestick charts with multiple timeframes and technical data.
--   **🛡️ Secure Authentication**: Integrated with Clerk for industry-standard user security and profile management.
--   **💰 Multi-Currency Support**: Real-time currency conversion (USD, INR, EUR, etc.) across the entire platform.
+-   **🛡️ Secure Authentication**: Integrated with Supabase for industry-standard user security and profile management.
+-   **💰 Multi-Currency Support**: Real-time currency conversion (USD, INR) across the entire platform.
 
 ## 🛠️ Modern Tech Stack
 
@@ -26,8 +26,8 @@ Kryonex is a high-performance, real-time trading simulation platform designed to
 ### Backend
 -   **Node.js & Express**: Scalable server-side logic.
 -   **MongoDB & Mongoose**: Flexible document-based data storage.
--   **Claude AI API**: Powers the CryptoSense intelligent analysis engine.
--   **Clerk**: Secure, scalable authentication and user management.
+-   **Groq AI*: Powers the Kryonex intelligent analysis engine.
+-   **Supabase**: Secure, scalable authentication and user management.
 
 ## 📋 Prerequisites
 
