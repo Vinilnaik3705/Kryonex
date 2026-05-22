@@ -133,13 +133,13 @@ const AssetDrawer = ({ isOpen, onClose, asset, isInWatchlist = false, onToggleWa
                                     <div className="flex items-center gap-1.5 text-[rgba(255,255,255,0.3)] mb-1">
                                         <Activity size={14} /> <span className="th-label">Volume</span>
                                     </div>
-                                    <p className="text-white font-bold font-mono price-mono text-[13px]">{asset.volume}</p>
+                                    <p className="text-white font-bold font-mono price-mono text-[13px]">{(asset.volume || asset.rawVolume) ? formatAmount(convert(asset.volume || asset.rawVolume), currency) : 'N/A'}</p>
                                 </div>
                                 <div className="bg-[#0a1824] p-3 rounded-xl border border-[rgba(255,255,255,0.06)]">
                                     <div className="flex items-center gap-1.5 text-[rgba(255,255,255,0.3)] mb-1">
                                         <BarChart2 size={14} /> <span className="th-label">Market Cap</span>
                                     </div>
-                                    <p className="text-white font-bold font-mono price-mono text-[13px]">{asset.marketCap}</p>
+                                    <p className="text-white font-bold font-mono price-mono text-[13px]">{(asset.marketCap || asset.rawMarketCap) ? formatAmount(convert(asset.marketCap || asset.rawMarketCap), currency) : 'N/A'}</p>
                                 </div>
                                 <div className="bg-[#0a1824] p-3 rounded-xl border border-[rgba(255,255,255,0.06)]">
                                     <div className="flex items-center gap-1.5 text-[rgba(255,255,255,0.3)] mb-1">
@@ -161,52 +161,23 @@ const AssetDrawer = ({ isOpen, onClose, asset, isInWatchlist = false, onToggleWa
                                 </div>
                             </div>
 
-                            {/* Trade Panel */}
-                            <div className="bg-[#0a1824] rounded-xl border border-[rgba(255,255,255,0.06)] overflow-hidden">
-                                <div className="flex border-b border-[rgba(255,255,255,0.06)]">
-                                    <button
-                                        onClick={() => setActiveTab('buy')}
-                                        className={`flex-1 py-3.5 font-extrabold text-[13px] transition-colors ${activeTab === 'buy' ? 'bg-success/[0.08] text-success border-b-2 border-success' : 'text-[rgba(255,255,255,0.3)] hover:text-white hover:bg-white/[0.02]'}`}
-                                    >
-                                        Buy {asset.symbol}
-                                    </button>
-                                    <button
-                                        onClick={() => setActiveTab('sell')}
-                                        className={`flex-1 py-3.5 font-extrabold text-[13px] transition-colors ${activeTab === 'sell' ? 'bg-danger/[0.08] text-danger border-b-2 border-danger' : 'text-[rgba(255,255,255,0.3)] hover:text-white hover:bg-white/[0.02]'}`}
-                                    >
-                                        Sell {asset.symbol}
-                                    </button>
-                                </div>
-
-                                <div className="p-5 space-y-5">
-
-                                    <div className="space-y-2">
-                                        <label className="th-label block">Amount ({currency})</label>
-                                        <div className="relative">
-                                            <DollarSign className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[rgba(255,255,255,0.3)]" size={16} />
-                                            <input
-                                                type="number"
-                                                value={amount}
-                                                onChange={(e) => setAmount(e.target.value)}
-                                                placeholder="0.00"
-                                                className="w-full bg-[#050d14] border border-[rgba(255,255,255,0.06)] rounded-lg pl-10 pr-4 py-3 text-white text-lg font-bold font-mono price-mono focus:outline-none focus:border-accent/50 transition-colors"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="flex justify-between text-[12px] text-[rgba(255,255,255,0.3)]">
-                                        <span>Available Balance</span>
-                                        <span className="text-white font-bold font-mono price-mono">{formatAmount(convert(walletBalance), currency)}</span>
-                                    </div>
-
-                                    <button className={`w-full py-3.5 rounded-lg font-extrabold text-[14px] shadow-lg transition-transform active:scale-95 ${activeTab === 'buy' ? 'bg-success hover:bg-[#34d399] text-[#050d14]' : 'bg-danger hover:bg-[#fb7185] text-[#050d14]'}`}>
-                                        {activeTab === 'buy' ? 'Buy Now' : 'Sell Now'}
-                                    </button>
-
-                                    <p className="text-center text-[10px] text-[rgba(255,255,255,0.3)] tracking-wide">
-                                        Market orders are executed instantly at the best available price.
-                                    </p>
-                                </div>
+                            {/* About Panel */}
+                            <div className="bg-[#0a1824] p-5 rounded-xl border border-[rgba(255,255,255,0.06)] shadow-lg">
+                                <h3 className="text-[13px] font-extrabold text-white mb-3 flex items-center gap-2">
+                                    <Activity size={16} className="text-accent" /> About {asset.name}
+                                </h3>
+                                <p className="text-[12px] text-[rgba(255,255,255,0.5)] leading-relaxed mb-5">
+                                    {asset.name} ({asset.symbol}) is currently trading at <span className="text-white font-bold">{formatAmount(convert(asset.price), currency)}</span> with a 24-hour change of <span className={asset.change >= 0 ? 'text-success font-bold' : 'text-danger font-bold'}>{asset.change >= 0 ? '+' : ''}{asset.change}%</span>.
+                                    <br/><br/>
+                                    Over the recent years, {asset.symbol} has established itself as a significant asset in the digital economy, showing dynamic performance correlated with broader market trends, adoption rates, and technological developments in the ecosystem.
+                                </p>
+                                <Link
+                                    to={`/trade/${asset.id}`}
+                                    state={{ type: asset.type }}
+                                    className="w-full flex items-center justify-center gap-2 bg-accent/[0.08] hover:bg-accent/[0.15] text-accent border border-accent/[0.2] py-3.5 rounded-lg font-extrabold text-[13px] transition-all shadow-[0_0_15px_rgba(56,189,248,0.1)]"
+                                >
+                                    Open Trading Dashboard <ArrowUpRight size={16} />
+                                </Link>
                             </div>
                         </div>
                     </motion.div>
