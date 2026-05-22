@@ -303,33 +303,35 @@ export const useWalletAndPortfolio = () => {
             return false;
         }
 
-        let holdingExists = false;
-        let saleProceeds = quantity * sellPrice;
+        // Validate holdings synchronously before triggering state updates
+        const holdingIndex = portfolioHoldings.findIndex((holding) => holding.symbol === symbol && holding.type === type);
+        if (holdingIndex < 0) {
+            return false; // User doesn't own this asset
+        }
+
+        const holding = portfolioHoldings[holdingIndex];
+        if (quantity > holding.quantity) {
+            return false; // User doesn't own enough of this asset
+        }
+
+        const saleProceeds = quantity * sellPrice;
 
         setPortfolioHoldings((prev) => {
-            const holdingIndex = prev.findIndex((holding) => holding.symbol === symbol && holding.type === type);
-            if (holdingIndex < 0) {
-                return prev;
-            }
+            const index = prev.findIndex((h) => h.symbol === symbol && h.type === type);
+            // Safety check in case state changed
+            if (index < 0 || quantity > prev[index].quantity) return prev;
 
-            holdingExists = true;
-            const holding = prev[holdingIndex];
-            if (quantity > holding.quantity) {
-                holdingExists = false;
-                return prev;
-            }
-
-            const updatedQuantity = holding.quantity - quantity;
+            const updatedQuantity = prev[index].quantity - quantity;
             const updated = [...prev];
 
             if (updatedQuantity <= 0) {
-                updated.splice(holdingIndex, 1);
+                updated.splice(index, 1);
             } else {
-                updated[holdingIndex] = {
-                    ...holding,
+                updated[index] = {
+                    ...prev[index],
                     quantity: updatedQuantity,
                     trades: [
-                        ...(holding.trades || []),
+                        ...(prev[index].trades || []),
                         {
                             date: new Date().toISOString(),
                             type: 'sell',
@@ -344,13 +346,9 @@ export const useWalletAndPortfolio = () => {
             return updated;
         });
 
-        if (!holdingExists) {
-            return false;
-        }
-
         setWalletBalance((prev) => prev + saleProceeds);
         return true;
-    }, []);
+    }, [portfolioHoldings]);
 
     /**
      * Calculate current portfolio value based on live prices
