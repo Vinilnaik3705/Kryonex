@@ -71,9 +71,6 @@ export default function TradeIntelPanel({
                     <p className="th-label text-accent">Trade Intelligence</p>
                     <h3 className="mt-0.5 text-lg font-extrabold text-white">{symbol}</h3>
                 </div>
-                <div className="rounded-lg border border-[rgba(255,255,255,0.06)] bg-white/[0.04] px-2.5 py-1 font-mono price-mono text-[12px] text-white font-bold">
-                    {formatAmount(convert(currentPrice), currency)}
-                </div>
             </div>
 
             {/* Quick Trade */}
