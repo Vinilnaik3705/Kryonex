@@ -41,6 +41,90 @@ class CryptoAPI {
             history: 30,    // Chart/kline history
             search: 60      // Symbol search results
         };
+        this.activeDailyOpenPromises = new Map();
+    }
+
+    normalizeSymbol(symbol) {
+        if (!symbol) return 'BTC';
+        const clean = symbol.trim().toLowerCase();
+        
+        const map = {
+            bitcoin: 'BTC', btc: 'BTC',
+            ethereum: 'ETH', eth: 'ETH',
+            solana: 'SOL', sol: 'SOL',
+            dogecoin: 'DOGE', doge: 'DOGE',
+            shiba: 'SHIB', shib: 'SHIB', shibainu: 'SHIB',
+            bnb: 'BNB', binancecoin: 'BNB',
+            ada: 'ADA', cardano: 'ADA',
+            dot: 'DOT', polkadot: 'DOT',
+            ripple: 'XRP', xrp: 'XRP',
+            avalanche: 'AVAX', avax: 'AVAX',
+            polygon: 'MATIC', matic: 'MATIC',
+            chainlink: 'LINK', link: 'LINK',
+            litecoin: 'LTC', ltc: 'LTC',
+            uniswap: 'UNI', uni: 'UNI',
+            cosmos: 'ATOM', atom: 'ATOM',
+            etc: 'ETC', ethereumclassic: 'ETC',
+            xlm: 'XLM', stellar: 'XLM',
+            algo: 'ALGO', algorand: 'ALGO',
+            vet: 'VET', vechain: 'VET',
+            fil: 'FIL', filecoin: 'FIL',
+            trx: 'TRX', tron: 'TRX'
+        };
+
+        let checkSymbol = clean;
+        if (clean.endsWith('usdt')) {
+            checkSymbol = clean.slice(0, -4);
+        }
+
+        if (map[checkSymbol]) {
+            return map[checkSymbol];
+        }
+        return checkSymbol.toUpperCase();
+    }
+
+    /**
+     * Fetch daily open price (since UTC 00:00) using 1d kline
+     */
+    async getDailyOpenPrice(symbol) {
+        const normalized = this.normalizeSymbol(symbol);
+        const tradingPair = `${normalized}USDT`;
+
+        const cacheKey = `crypto:dailyOpen:${tradingPair}`;
+        const cached = cacheService.get(cacheKey);
+        if (cached !== undefined && cached !== null) {
+            return cached;
+        }
+
+        if (this.activeDailyOpenPromises.has(cacheKey)) {
+            return this.activeDailyOpenPromises.get(cacheKey);
+        }
+
+        const promise = (async () => {
+            try {
+                const response = await axios.get(`${this.baseURL}/klines`, {
+                    params: {
+                        symbol: tradingPair,
+                        interval: '1d',
+                        limit: 1
+                    }
+                });
+                if (response.data && response.data.length > 0) {
+                    const openPrice = parseFloat(response.data[0][1]); // Index 1 is open price
+                    // Cache for 1 hour
+                    cacheService.set(cacheKey, openPrice, 3600);
+                    return openPrice;
+                }
+            } catch (error) {
+                console.error(`Failed to fetch daily open price for ${tradingPair}:`, error.message);
+            } finally {
+                this.activeDailyOpenPromises.delete(cacheKey);
+            }
+            return null;
+        })();
+
+        this.activeDailyOpenPromises.set(cacheKey, promise);
+        return promise;
     }
 
     /**
@@ -48,9 +132,8 @@ class CryptoAPI {
      */
     async getPrice(symbol) {
         // Normalize symbol (e.g., BTC -> BTCUSDT)
-        const tradingPair = symbol.toUpperCase().endsWith('USDT')
-            ? symbol.toUpperCase()
-            : `${symbol.toUpperCase()}USDT`;
+        const normalized = this.normalizeSymbol(symbol);
+        const tradingPair = `${normalized}USDT`;
 
         // Check cache first (5s TTL for near real-time)
         const cacheKey = `crypto:price:${tradingPair}`;
@@ -66,18 +149,29 @@ class CryptoAPI {
             });
 
             const ticker = response.data;
+            const lastPrice = parseFloat(ticker.lastPrice);
+
+            // Calculate daily price change percentage relative to midnight UTC open price
+            const dailyOpen = await this.getDailyOpenPrice(tradingPair);
+            let change = parseFloat(ticker.priceChange);
+            let changePercent = parseFloat(ticker.priceChangePercent);
+
+            if (dailyOpen) {
+                change = lastPrice - dailyOpen;
+                changePercent = (change / dailyOpen) * 100;
+            }
 
             const data = {
                 symbol: tradingPair,
-                baseAsset: symbol.toUpperCase().replace('USDT', ''),
-                price: parseFloat(ticker.lastPrice),
-                change: parseFloat(ticker.priceChange),
-                changePercent: parseFloat(ticker.priceChangePercent),
+                baseAsset: normalized,
+                price: lastPrice,
+                change: change,
+                changePercent: changePercent,
                 volume: parseFloat(ticker.volume),
                 quoteVolume: parseFloat(ticker.quoteVolume),
                 high: parseFloat(ticker.highPrice),
                 low: parseFloat(ticker.lowPrice),
-                open: parseFloat(ticker.openPrice),
+                open: dailyOpen || parseFloat(ticker.openPrice),
                 previousClose: parseFloat(ticker.prevClosePrice),
                 trades: ticker.count,
                 timestamp: new Date(ticker.closeTime).toISOString()
@@ -97,9 +191,8 @@ class CryptoAPI {
      * Get historical crypto data (candlestick/klines)
      */
     async getHistory(symbol, interval = '1d', limit = 30) {
-        const tradingPair = symbol.toUpperCase().endsWith('USDT')
-            ? symbol.toUpperCase()
-            : `${symbol.toUpperCase()}USDT`;
+        const normalized = this.normalizeSymbol(symbol);
+        const tradingPair = `${normalized}USDT`;
 
         const cacheKey = `crypto:history:${tradingPair}:${interval}:${limit}`;
         const cached = cacheService.get(cacheKey);
@@ -151,22 +244,38 @@ class CryptoAPI {
             });
 
             // Filter USDT pairs and sort by quote volume (proxy for market cap)
-            const data = response.data
+            const rawTickers = response.data
                 .filter(ticker => ticker.symbol.endsWith('USDT'))
                 .sort((a, b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
-                .slice(0, limit)
-                .map(ticker => ({
-                    symbol: ticker.symbol,
-                    baseAsset: ticker.symbol.replace('USDT', ''),
-                    price: parseFloat(ticker.lastPrice),
-                    change: parseFloat(ticker.priceChange),
-                    changePercent: parseFloat(ticker.priceChangePercent),
-                    volume: parseFloat(ticker.volume),
-                    quoteVolume: parseFloat(ticker.quoteVolume),
-                    high: parseFloat(ticker.highPrice),
-                    low: parseFloat(ticker.lowPrice),
-                    source: 'binance'
-                }));
+                .slice(0, limit);
+
+            const data = await Promise.all(
+                rawTickers.map(async (ticker) => {
+                    const lastPrice = parseFloat(ticker.lastPrice);
+                    const dailyOpen = await this.getDailyOpenPrice(ticker.symbol);
+                    
+                    let change = parseFloat(ticker.priceChange);
+                    let changePercent = parseFloat(ticker.priceChangePercent);
+
+                    if (dailyOpen) {
+                        change = lastPrice - dailyOpen;
+                        changePercent = (change / dailyOpen) * 100;
+                    }
+
+                    return {
+                        symbol: ticker.symbol,
+                        baseAsset: ticker.symbol.replace('USDT', ''),
+                        price: lastPrice,
+                        change: change,
+                        changePercent: changePercent,
+                        volume: parseFloat(ticker.volume),
+                        quoteVolume: parseFloat(ticker.quoteVolume),
+                        high: parseFloat(ticker.highPrice),
+                        low: parseFloat(ticker.lowPrice),
+                        source: 'binance'
+                    };
+                })
+            );
 
             cacheService.set(cacheKey, data, this.cacheTTL.market); // 5s cache for near real-time
             return data;
@@ -203,29 +312,57 @@ class CryptoAPI {
             const response = await axios.get(`${this.baseURL}/ticker/24hr`);
 
             // Filter USDT pairs and sort by price change percentage
-            const gainers = response.data
+            const rawGainers = response.data
                 .filter(ticker => ticker.symbol.endsWith('USDT'))
                 .sort((a, b) => parseFloat(b.priceChangePercent) - parseFloat(a.priceChangePercent))
-                .slice(0, limit)
-                .map(ticker => ({
-                    symbol: ticker.symbol,
-                    baseAsset: ticker.symbol.replace('USDT', ''),
-                    price: parseFloat(ticker.lastPrice),
-                    changePercent: parseFloat(ticker.priceChangePercent),
-                    volume: parseFloat(ticker.quoteVolume)
-                }));
+                .slice(0, limit);
 
-            const losers = response.data
+            const rawLosers = response.data
                 .filter(ticker => ticker.symbol.endsWith('USDT'))
                 .sort((a, b) => parseFloat(a.priceChangePercent) - parseFloat(b.priceChangePercent))
-                .slice(0, limit)
-                .map(ticker => ({
-                    symbol: ticker.symbol,
-                    baseAsset: ticker.symbol.replace('USDT', ''),
-                    price: parseFloat(ticker.lastPrice),
-                    changePercent: parseFloat(ticker.priceChangePercent),
-                    volume: parseFloat(ticker.quoteVolume)
-                }));
+                .slice(0, limit);
+
+            const gainers = await Promise.all(
+                rawGainers.map(async (ticker) => {
+                    const lastPrice = parseFloat(ticker.lastPrice);
+                    const dailyOpen = await this.getDailyOpenPrice(ticker.symbol);
+                    
+                    let changePercent = parseFloat(ticker.priceChangePercent);
+
+                    if (dailyOpen) {
+                        changePercent = ((lastPrice - dailyOpen) / dailyOpen) * 100;
+                    }
+
+                    return {
+                        symbol: ticker.symbol,
+                        baseAsset: ticker.symbol.replace('USDT', ''),
+                        price: lastPrice,
+                        changePercent: changePercent,
+                        volume: parseFloat(ticker.quoteVolume)
+                    };
+                })
+            );
+
+            const losers = await Promise.all(
+                rawLosers.map(async (ticker) => {
+                    const lastPrice = parseFloat(ticker.lastPrice);
+                    const dailyOpen = await this.getDailyOpenPrice(ticker.symbol);
+                    
+                    let changePercent = parseFloat(ticker.priceChangePercent);
+
+                    if (dailyOpen) {
+                        changePercent = ((lastPrice - dailyOpen) / dailyOpen) * 100;
+                    }
+
+                    return {
+                        symbol: ticker.symbol,
+                        baseAsset: ticker.symbol.replace('USDT', ''),
+                        price: lastPrice,
+                        changePercent: changePercent,
+                        volume: parseFloat(ticker.quoteVolume)
+                    };
+                })
+            );
 
             const data = { gainers, losers };
             cacheService.set(cacheKey, data, this.cacheTTL.market); // 5s cache for near real-time
@@ -275,9 +412,8 @@ class CryptoAPI {
      * Get exchange info for a symbol
      */
     async getExchangeInfo(symbol) {
-        const tradingPair = symbol.toUpperCase().endsWith('USDT')
-            ? symbol.toUpperCase()
-            : `${symbol.toUpperCase()}USDT`;
+        const normalized = this.normalizeSymbol(symbol);
+        const tradingPair = `${normalized}USDT`;
 
         try {
             const response = await axios.get(`${this.baseURL}/exchangeInfo`, {

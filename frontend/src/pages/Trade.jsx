@@ -264,7 +264,7 @@ const AssetSearchModal = ({ isOpen, onClose, onSelect, currentAsset }) => {
     );
 };
 
-const ChartInstance = ({ config, onUpdate, isSingle, useSharedFeed = false, sharedCandles = [] }) => {
+const ChartInstance = ({ config, onUpdate, isSingle, onPriceUpdate }) => {
     const [showSearch, setShowSearch] = useState(false);
     const [showTimeframeMenu, setShowTimeframeMenu] = useState(false);
     const selectedTimeframe = TIMEFRAMES.find((item) => item.value === config.timeframe) || TIMEFRAMES[0];
@@ -354,8 +354,7 @@ const ChartInstance = ({ config, onUpdate, isSingle, useSharedFeed = false, shar
                         height={isSingle ? 540 : 300}
                         indicators={config.indicators}
                         showVolume={true}
-                        externalCandles={useSharedFeed ? sharedCandles : null}
-                        disableInternalRealtime={useSharedFeed}
+                        onPriceUpdate={onPriceUpdate}
                     />
                 </div>
             </div>
@@ -386,12 +385,8 @@ export default function Trade() {
     const [layout, setLayout] = useState('single'); // single, split-h, split-v, quad
     const [quantity, setQuantity] = useState('');
     const [livePrice, setLivePrice] = useState(null);
-    const [orderBookData, setOrderBookData] = useState({ asks: [], bids: [] });
-    const [recentTrades, setRecentTrades] = useState([]);
-    const [sharedCandles, setSharedCandles] = useState([]);
     const [buyError, setBuyError] = useState('');
     const [assetSnapshot, setAssetSnapshot] = useState({ price: null, high: null, low: null, volume: null, marketCap: null, changePercent: 0 });
-    const wsRef = useRef(null);
     const initialAssetType = 'crypto';
 
     // Default config template
@@ -454,9 +449,6 @@ export default function Trade() {
 
     useEffect(() => {
         setLivePrice(null);
-        setOrderBookData({ asks: [], bids: [] });
-        setRecentTrades([]);
-        setSharedCandles([]);
     }, [primarySymbol]);
 
     useEffect(() => {
@@ -480,9 +472,10 @@ export default function Trade() {
                         ? marketResponse.data
                         : [];
 
+                const searchSymbol = getAssetDisplayName(primarySymbol).toUpperCase();
                 const marketEntry = marketList.find((item) => {
                     const symbolMatch = String(item.symbol || '').replace('USDT', '').toUpperCase();
-                    return symbolMatch === primarySymbol.toUpperCase() || String(item.baseAsset || '').toUpperCase() === primarySymbol.toUpperCase();
+                    return symbolMatch === searchSymbol || String(item.baseAsset || '').toUpperCase() === searchSymbol;
                 }) || {};
 
                 setAssetSnapshot({
@@ -511,153 +504,7 @@ export default function Trade() {
         };
     }, [primarySymbol]);
 
-    useEffect(() => {
-        if (primaryAssetType !== 'crypto') {
-            if (wsRef.current) {
-                wsRef.current.close();
-                wsRef.current = null;
-            }
-            return undefined;
-        }
 
-        let isCancelled = false;
-        const binanceSymbol = getBinanceSymbol(primarySymbol);
-
-        const closeSocket = () => {
-            if (wsRef.current) {
-                wsRef.current.close();
-                wsRef.current = null;
-            }
-        };
-
-        const loadHistory = async () => {
-            const response = await fetch(
-                `https://api.binance.com/api/v3/klines?symbol=${binanceSymbol}&interval=1m&limit=200`
-            );
-
-            if (!response.ok) {
-                throw new Error(`Failed to load Binance history: ${response.status}`);
-            }
-
-            const payload = await response.json();
-            if (!Array.isArray(payload)) return [];
-
-            return payload.map((kline) => ({
-                time: Math.floor(Number(kline[0]) / 1000),
-                open: Number.parseFloat(kline[1]),
-                high: Number.parseFloat(kline[2]),
-                low: Number.parseFloat(kline[3]),
-                close: Number.parseFloat(kline[4]),
-                volume: Number.parseFloat(kline[5] || 0),
-            }));
-        };
-
-        const openWebSocket = () => {
-            closeSocket();
-            const streamSymbol = binanceSymbol.toLowerCase();
-            const streams = `${streamSymbol}@kline_1m/${streamSymbol}@depth20@100ms/${streamSymbol}@trade`;
-            const socket = new WebSocket(`wss://stream.binance.com:9443/stream?streams=${streams}`);
-
-            socket.onmessage = (event) => {
-                if (isCancelled) return;
-
-                try {
-                    const message = JSON.parse(event.data);
-                    const streamName = message?.stream || '';
-                    const data = message?.data;
-                    if (!data) return;
-
-                    if (streamName.includes('@kline')) {
-                        const kline = data.k;
-                        if (!kline) return;
-
-                        const candle = {
-                            time: Math.floor(Number(kline.t) / 1000),
-                            open: Number.parseFloat(kline.o),
-                            high: Number.parseFloat(kline.h),
-                            low: Number.parseFloat(kline.l),
-                            close: Number.parseFloat(kline.c),
-                            volume: Number.parseFloat(kline.v),
-                        };
-
-                        setLivePrice(candle.close);
-                        setSharedCandles((previous) => {
-                            if (!previous.length) return [candle];
-                            const next = [...previous];
-                            const last = next[next.length - 1];
-
-                            if (last.time === candle.time) {
-                                next[next.length - 1] = candle;
-                            } else if (candle.time > last.time) {
-                                next.push(candle);
-                            }
-
-                            return next.slice(-250);
-                        });
-                    }
-
-                    if (streamName.includes('@depth')) {
-                        const asks = Array.isArray(data.asks)
-                            ? data.asks.slice(0, 10).map(([price, size]) => ({
-                                price: Number.parseFloat(price),
-                                size: Number.parseFloat(size),
-                            }))
-                            : [];
-                        const bids = Array.isArray(data.bids)
-                            ? data.bids.slice(0, 10).map(([price, size]) => ({
-                                price: Number.parseFloat(price),
-                                size: Number.parseFloat(size),
-                            }))
-                            : [];
-
-                        setOrderBookData({ asks, bids });
-                    }
-
-                    if (streamName.includes('@trade')) {
-                        setRecentTrades((previous) => ([{
-                            price: Number.parseFloat(data.p),
-                            size: Number.parseFloat(data.q),
-                            time: new Date(data.T).toLocaleTimeString(),
-                            isBuy: data.m === false,
-                        }, ...previous].slice(0, 20)));
-                    }
-                } catch (socketError) {
-                    console.error('Failed to process Binance stream message:', socketError);
-                }
-            };
-
-            socket.onerror = (socketError) => {
-                console.error('Binance stream connection error:', socketError);
-            };
-
-            wsRef.current = socket;
-        };
-
-        const initializeFeed = async () => {
-            try {
-                const history = await loadHistory();
-                if (isCancelled) return;
-
-                setSharedCandles(history);
-                if (history.length > 0) {
-                    setLivePrice(history[history.length - 1].close);
-                }
-            } catch (historyError) {
-                console.error('Failed to initialize Binance history:', historyError);
-            }
-
-            if (!isCancelled) {
-                openWebSocket();
-            }
-        };
-
-        initializeFeed();
-
-        return () => {
-            isCancelled = true;
-            closeSocket();
-        };
-    }, [primarySymbol, primaryAssetType]);
 
     const handleLayoutChange = (newLayout) => {
         setLayout(newLayout);
@@ -784,8 +631,7 @@ export default function Trade() {
                                     config={config}
                                     onUpdate={updateConfig}
                                     isSingle={layout === 'single'}
-                                    useSharedFeed={primaryAssetType === 'crypto' && config.id === primaryConfig.id}
-                                    sharedCandles={config.id === primaryConfig.id ? sharedCandles : []}
+                                    onPriceUpdate={config.id === primaryConfig.id ? setLivePrice : undefined}
                                 />
                             ))}
                         </div>
@@ -795,7 +641,7 @@ export default function Trade() {
                         <div className="lg:col-span-1 h-[600px] min-h-0">
                             <TradeIntelPanel
                                 symbol={getAssetDisplayName(primarySymbol)}
-                                currentPrice={assetSnapshot.price || livePrice || currentPrice}
+                                currentPrice={livePrice || assetSnapshot.price || currentPrice}
                                 assetStats={assetSnapshot}
                                 recentTrades={quickTradeHistory}
                                 walletBalance={walletBalance}

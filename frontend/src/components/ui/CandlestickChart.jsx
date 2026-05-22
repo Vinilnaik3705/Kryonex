@@ -248,6 +248,12 @@ const CandlestickChart = ({
     onCrosshairMove = null,
     onPriceUpdate = null,
 }) => {
+    const onPriceUpdateRef = useRef(onPriceUpdate);
+
+    useEffect(() => {
+        onPriceUpdateRef.current = onPriceUpdate;
+    }, [onPriceUpdate]);
+
     const chartContainerRef = useRef(null);
     const chartRef = useRef(null);
     const candleSeriesRef = useRef(null);
@@ -471,7 +477,7 @@ const CandlestickChart = ({
                     volumeScaleRef.current = getVolumeScale(nextCandles);
                     historyCache.set(historyCacheKey, nextCandles);
                     setCandles(nextCandles);
-                    onPriceUpdate?.(nextCandles.at(-1)?.close);
+                    onPriceUpdateRef.current?.(nextCandles.at(-1)?.close);
 
                     const streamInterval = timeframeConfig.streamInterval || timeframeConfig.interval;
                     wsRef.current = new WebSocket(
@@ -501,7 +507,7 @@ const CandlestickChart = ({
                                 const nextCandles = timeframeConfig.transform(nextRawCandles);
                                 volumeScaleRef.current = getVolumeScale(nextCandles);
                                 setCandles(nextCandles);
-                                onPriceUpdate?.(nextCandles.at(-1)?.close);
+                                onPriceUpdateRef.current?.(nextCandles.at(-1)?.close);
                             } else {
                                 candleSeriesRef.current?.update(liveCandle);
                                 if (volumeSeriesRef.current) {
@@ -511,7 +517,7 @@ const CandlestickChart = ({
                                         color: liveCandle.close >= liveCandle.open ? 'rgba(38, 166, 154, 0.35)' : 'rgba(239, 83, 80, 0.35)',
                                     });
                                 }
-                                onPriceUpdate?.(liveCandle.close);
+                                onPriceUpdateRef.current?.(liveCandle.close);
 
                                 setCandles((previous) => {
                                     if (isStaleRequest(requestId)) return previous;
@@ -557,7 +563,7 @@ const CandlestickChart = ({
                     volumeScaleRef.current = getVolumeScale(nextCandles);
                     historyCache.set(historyCacheKey, nextCandles);
                     setCandles(nextCandles);
-                    onPriceUpdate?.(nextCandles.at(-1)?.close);
+                    onPriceUpdateRef.current?.(nextCandles.at(-1)?.close);
 
                     setMarketOpen(isMarketOpen());
                     const pollStockQuote = async () => {
@@ -584,7 +590,7 @@ const CandlestickChart = ({
                                 value: normalizeVolume(quoteCandle.volume || 0, volumeScaleRef.current),
                                 color: quoteCandle.close >= quoteCandle.open ? 'rgba(38, 166, 154, 0.35)' : 'rgba(239, 83, 80, 0.35)',
                             });
-                            onPriceUpdate?.(quoteCandle.close);
+                            onPriceUpdateRef.current?.(quoteCandle.close);
 
                             setCandles((previous) => {
                                 if (isStaleRequest(requestId)) return previous;
