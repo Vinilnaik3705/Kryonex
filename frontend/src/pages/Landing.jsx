@@ -63,7 +63,7 @@ const Landing = () => {
                         <div className="hidden lg:flex items-center gap-8 text-sm font-medium">
                             <NavbarLink to="products" label="Products" isScrollId={true} />
                             <NavbarLink to="markets" label="Markets" isScrollId={true} />
-                            <NavbarLink to="news" label="News" isScrollId={true} />
+
                         </div>
                     </div>
 
@@ -101,7 +101,7 @@ const Landing = () => {
                         <div className="flex flex-col gap-4">
                             <NavbarLink to="products" label="Products" isScrollId={true} />
                             <NavbarLink to="markets" label="Markets" isScrollId={true} />
-                            <NavbarLink to="news" label="News" isScrollId={true} />
+
                         </div>
                         <div className="h-[1px] bg-white/5" />
                         <div className="flex flex-col gap-4">
@@ -223,27 +223,7 @@ const Landing = () => {
                     </div>
                 </section>
 
-                {/* News Section */}
-                <section id="news" className="relative z-10 min-h-screen flex items-center py-20 border-t border-white/5">
-                    <div className="container mx-auto px-6">
-                        <h2 className="text-4xl md:text-6xl font-bold text-white mb-12 flex items-center gap-4">
-                            <Newspaper size={48} className="text-yellow-400" />
-                            Latest <span className="text-yellow-400">News</span>
-                        </h2>
-                        <div className="grid md:grid-cols-2 gap-8">
-                            {[1, 2, 3, 4].map((i) => (
-                                <div key={i} className="flex gap-6 p-6 rounded-xl bg-white/5 hover:bg-white/10 transition-colors border border-white/5 cursor-pointer">
-                                    <div className="w-24 h-24 bg-slate-800 rounded-lg flex-shrink-0" />
-                                    <div>
-                                        <div className="text-xs text-[#2962FF] font-bold mb-2 uppercase tracking-wide">Crypto • 2h ago</div>
-                                        <h3 className="text-xl font-bold mb-2 leading-tight group-hover:text-[#2962FF] transition-colors">Bitcoin breaks key resistance level as institutional interest surges.</h3>
-                                        <p className="text-sm text-slate-400 line-clamp-2">Analysts predict a strong upward trend following the latest ETF approvals...</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </section>
+
 
                 {/* Detailed Footer */}
                 <footer className="relative z-10 bg-black pt-20 pb-10 border-t border-white/10 text-sm">
