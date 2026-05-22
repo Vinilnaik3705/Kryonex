@@ -179,15 +179,6 @@ const AssetDrawer = ({ isOpen, onClose, asset, isInWatchlist = false, onToggleWa
                                 </div>
 
                                 <div className="p-5 space-y-5">
-                                    {/* Order Type Selector */}
-                                    <div className="flex bg-[#050d14] rounded-lg p-1 border border-[rgba(255,255,255,0.06)]">
-                                        <button className="flex-1 py-1.5 text-[11px] font-extrabold rounded bg-white/[0.06] text-white shadow-[0_2px_4px_rgba(0,0,0,0.2)]">
-                                            Market
-                                        </button>
-                                        <button disabled className="flex-1 py-1.5 text-[11px] font-extrabold rounded text-[rgba(255,255,255,0.2)] cursor-not-allowed">
-                                            Limit (Soon)
-                                        </button>
-                                    </div>
 
                                     <div className="space-y-2">
                                         <label className="th-label block">Amount ({currency})</label>
