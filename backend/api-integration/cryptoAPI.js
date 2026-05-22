@@ -31,10 +31,15 @@ const FALLBACK_CRYPTO = [
 class CryptoAPI {
     constructor() {
         this.baseURL = 'https://api.binance.com/api/v3';
+        // Near real-time cache TTLs (in seconds)
+        // Price & market data: 5s for near real-time dashboards
+        // History: 30s (chart data, less critical)
+        // Search: 60s (rarely changes)
         this.cacheTTL = {
-            price: parseInt(process.env.CACHE_TTL_QUOTE) || 5,
-            history: parseInt(process.env.CACHE_TTL_HISTORY) || 300,
-            trending: parseInt(process.env.CACHE_TTL_SEARCH) || 600
+            price: 5,       // Individual price lookups
+            market: 5,      // Market list (top coins, trending)
+            history: 30,    // Chart/kline history
+            search: 60      // Symbol search results
         };
     }
 
@@ -46,6 +51,13 @@ class CryptoAPI {
         const tradingPair = symbol.toUpperCase().endsWith('USDT')
             ? symbol.toUpperCase()
             : `${symbol.toUpperCase()}USDT`;
+
+        // Check cache first (5s TTL for near real-time)
+        const cacheKey = `crypto:price:${tradingPair}`;
+        const cached = cacheService.get(cacheKey);
+        if (cached) {
+            return cached;
+        }
 
         try {
             // Get 24hr ticker data
@@ -70,6 +82,8 @@ class CryptoAPI {
                 trades: ticker.count,
                 timestamp: new Date(ticker.closeTime).toISOString()
             };
+
+            cacheService.set(cacheKey, data, this.cacheTTL.price);
             return data;
         } catch (error) {
             if (error.response?.status === 400) {
@@ -112,7 +126,7 @@ class CryptoAPI {
                 volume: parseFloat(candle[5])
             }));
 
-            cacheService.set(cacheKey, data, this.cacheTTL.history);
+            cacheService.set(cacheKey, data, this.cacheTTL.history); // 30s cache
             return data;
         } catch (error) {
             throw new Error(`Failed to fetch crypto history for ${symbol}: ${error.message}`);
@@ -154,7 +168,7 @@ class CryptoAPI {
                     source: 'binance'
                 }));
 
-            cacheService.set(cacheKey, data, this.cacheTTL.trending);
+            cacheService.set(cacheKey, data, this.cacheTTL.market); // 5s cache for near real-time
             return data;
         } catch (error) {
             console.log('Binance API failed, using fallback crypto data:', error.message);
@@ -169,7 +183,7 @@ class CryptoAPI {
             }));
 
             // Cache fallback for 5 minutes
-            cacheService.set(cacheKey, fallbackData, 300);
+            cacheService.set(cacheKey, fallbackData, 30); // Short cache for fallback too
             return fallbackData;
         }
     }
@@ -214,7 +228,7 @@ class CryptoAPI {
                 }));
 
             const data = { gainers, losers };
-            cacheService.set(cacheKey, data, this.cacheTTL.trending);
+            cacheService.set(cacheKey, data, this.cacheTTL.market); // 5s cache for near real-time
             return data;
         } catch (error) {
             throw new Error(`Failed to fetch trending cryptocurrencies: ${error.message}`);
@@ -250,7 +264,7 @@ class CryptoAPI {
                     status: s.status
                 }));
 
-            cacheService.set(cacheKey, results, this.cacheTTL.trending);
+            cacheService.set(cacheKey, results, this.cacheTTL.search); // 60s cache for search
             return results;
         } catch (error) {
             throw new Error(`Failed to search cryptocurrencies: ${error.message}`);

@@ -486,7 +486,7 @@ export default function Trade() {
                 }) || {};
 
                 setAssetSnapshot({
-                    price: Number(quote.price ?? livePrice ?? currentPrice ?? 0),
+                    price: Number(quote.price ?? marketEntry.price ?? 0),
                     high: Number(quote.high ?? marketEntry.high ?? quote.price ?? 0),
                     low: Number(quote.low ?? marketEntry.low ?? quote.price ?? 0),
                     volume: Number(quote.volume ?? marketEntry.volume ?? marketEntry.quoteVolume ?? 0),
@@ -498,7 +498,7 @@ export default function Trade() {
                 if (!cancelled) {
                     setAssetSnapshot((previous) => ({
                         ...previous,
-                        price: Number(livePrice || currentPrice || 0),
+                        price: Number(previous.price || 0),
                     }));
                 }
             }
@@ -509,7 +509,7 @@ export default function Trade() {
         return () => {
             cancelled = true;
         };
-    }, [primarySymbol, livePrice]);
+    }, [primarySymbol]);
 
     useEffect(() => {
         if (primaryAssetType !== 'crypto') {
@@ -706,7 +706,7 @@ export default function Trade() {
     };
 
     const handleQuickTrade = (side, amountInUsdt) => {
-        const tradePrice = Number(assetSnapshot.price || livePrice || currentPrice || 0);
+        const tradePrice = Number(livePrice || assetSnapshot.price || currentPrice || 0);
         if (!tradePrice || amountInUsdt <= 0) return false;
 
         const tradeQuantity = amountInUsdt / tradePrice;

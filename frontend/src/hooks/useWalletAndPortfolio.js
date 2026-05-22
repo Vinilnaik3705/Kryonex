@@ -22,6 +22,7 @@ export const useWalletAndPortfolio = () => {
     const [storageReady, setStorageReady] = useState(false);
 
     const [livePrices, setLivePrices] = useState({});
+    const lastKnownPricesRef = useRef({}); // Persists last successfully fetched prices across re-renders
     const syncTimerRef = useRef(null);
 
     useEffect(() => {
@@ -164,7 +165,7 @@ export const useWalletAndPortfolio = () => {
         };
     }, [walletBalance, portfolioHoldings, storageReady, user?.id, getAuthHeaders]);
 
-    // Fetch live prices for all holdings
+    // Fetch live prices for all holdings — parallel with last-known-good-price fallback
     useEffect(() => {
         const fetchPrices = async () => {
             if (portfolioHoldings.length === 0) {
@@ -173,36 +174,45 @@ export const useWalletAndPortfolio = () => {
             }
 
             try {
-                const prices = {};
                 const uniqueSymbols = [...new Set(portfolioHoldings.map(h => h.symbol))];
 
-                for (const symbol of uniqueSymbols) {
-                    try {
+                // Fetch all prices in parallel for speed
+                const results = await Promise.allSettled(
+                    uniqueSymbols.map(async (symbol) => {
                         const endpoint = `${API_BASE_URL}/crypto/price/${symbol}`;
-
                         const response = await axios.get(endpoint);
                         const price = response.data?.data?.price ??
                             response.data?.price ??
                             response.data?.data?.regularMarketPrice ??
                             null;
+                        return { symbol, price: price ? Number(price) : null };
+                    })
+                );
 
-                        if (price) {
-                            prices[symbol] = Number(price);
-                        }
-                    } catch (e) {
-                        console.warn(`Failed to fetch price for ${symbol}:`, e);
+                const prices = { ...lastKnownPricesRef.current }; // Start with last known good prices
+
+                for (const result of results) {
+                    if (result.status === 'fulfilled' && result.value.price !== null) {
+                        const { symbol, price } = result.value;
+                        prices[symbol] = price;
+                        lastKnownPricesRef.current[symbol] = price; // Persist for future fallback
                     }
+                    // If fetch failed, we keep the last known price from the spread above
                 }
 
                 setLivePrices(prices);
             } catch (e) {
                 console.error('Failed to fetch live prices:', e);
+                // On total failure, use last known prices so P/L doesn't show false 0%
+                if (Object.keys(lastKnownPricesRef.current).length > 0) {
+                    setLivePrices({ ...lastKnownPricesRef.current });
+                }
             }
         };
 
-        // Fetch immediately and then every 10 seconds
+        // Fetch immediately and then every 5 seconds for near real-time P/L
         fetchPrices();
-        const interval = setInterval(fetchPrices, 10000);
+        const interval = setInterval(fetchPrices, 5000);
         return () => clearInterval(interval);
     }, [portfolioHoldings]);
 

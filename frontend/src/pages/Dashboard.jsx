@@ -95,7 +95,7 @@ export default function Dashboard() {
     // Build data from real holdings
     const allHoldings = getHoldingsWithValues();
 
-    // Fetch crypto market data
+    // Fetch crypto market data with auto-refresh
     useEffect(() => {
         const fetchDashboardData = async () => {
             try {
@@ -119,6 +119,10 @@ export default function Dashboard() {
         };
 
         fetchDashboardData();
+
+        // Auto-refresh every 10 seconds for near real-time data
+        const interval = setInterval(fetchDashboardData, 10000);
+        return () => clearInterval(interval);
     }, []);
 
     // Fetch real-time news

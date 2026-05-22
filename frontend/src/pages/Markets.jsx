@@ -62,7 +62,7 @@ export default function Markets() {
 
         fetchMarketData();
 
-        const interval = setInterval(fetchMarketData, 15000);
+        const interval = setInterval(fetchMarketData, 5000); // 5s polling for near real-time
         return () => clearInterval(interval);
     }, []);
 

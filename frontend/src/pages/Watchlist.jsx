@@ -23,10 +23,11 @@ export default function Watchlist() {
     const [assets, setAssets] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // Fetch assets from API
+    // Fetch assets from API with auto-refresh
     useEffect(() => {
+        let isInitial = true;
         const fetchAssets = async () => {
-            setLoading(true);
+            if (isInitial) setLoading(true);
             try {
                 const endpoint = `${API_URL}/crypto/market-cap?limit=100`;
                 const response = await axios.get(endpoint);
@@ -58,11 +59,16 @@ export default function Watchlist() {
                 console.error('Failed to fetch watchlist assets:', error);
                 setAssets([]);
             } finally {
-                setLoading(false);
+                if (isInitial) {
+                    setLoading(false);
+                    isInitial = false;
+                }
             }
         };
 
         fetchAssets();
+        const interval = setInterval(fetchAssets, 10000); // 10s auto-refresh
+        return () => clearInterval(interval);
     }, []);
 
     const filteredData = useMemo(() => {
