@@ -26,7 +26,7 @@ Kryonex is a high-performance, real-time trading simulation platform designed to
 ### Backend
 -   **Node.js & Express**: Scalable server-side logic.
 -   **MongoDB & Mongoose**: Flexible document-based data storage.
--   **Groq AI*: Powers the Kryonex intelligent analysis engine.
+-   **Groq AI**: Powers the Kryonex intelligent analysis engine.
 -   **Supabase**: Secure, scalable authentication and user management.
 
 ## 📋 Prerequisites
