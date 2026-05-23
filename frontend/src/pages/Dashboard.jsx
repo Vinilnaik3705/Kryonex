@@ -172,14 +172,10 @@ export default function Dashboard() {
                 </div>
 
                 {/* Stat Cards Grid - Responsive fix */}
-                <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(2, 1fr)',
-                    gap: 10,
-                    padding: '0 16px',
-                    width: '100%',
-                    boxSizing: 'border-box',
-                }} className="lg:grid-cols-4 lg:px-0 lg:gap-3">
+                <div
+                    className="grid gap-3 px-4 sm:px-0 w-full box-border"
+                    style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}
+                >
                     {/* AVAILABLE BALANCE */}
                     <div style={{
                         background: 'rgba(255,255,255,0.04)',

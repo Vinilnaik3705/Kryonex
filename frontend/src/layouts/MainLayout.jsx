@@ -50,7 +50,7 @@ const MainLayout = ({ children }) => {
 
 
     return (
-        <div className="flex min-h-screen bg-primary">
+        <div className="flex min-h-screen w-full min-w-0 bg-primary">
             {/* Sidebar Desktop */}
             <aside className="hidden md:flex flex-col w-60 border-r border-[rgba(56,189,248,0.12)] bg-black fixed h-full z-20">
                 <div className="p-5">
@@ -125,7 +125,7 @@ const MainLayout = ({ children }) => {
             </div>
 
             {/* Main Content */}
-            <main className="flex-1 md:ml-60 p-4 sm:p-6 pt-16 md:pt-6 min-h-screen">
+            <main className="flex-1 min-w-0 md:ml-60 p-4 sm:p-6 pt-16 md:pt-6 min-h-screen">
                 {children}
             </main>
 

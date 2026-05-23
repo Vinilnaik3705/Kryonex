@@ -2,9 +2,14 @@ const mongoose = require('mongoose');
 
 const connectDB = async () => {
     try {
-        let uri = process.env.MONGO_URI || process.env.MONGODB_URI || 'mongodb://localhost:27017/kryonex';
+        let uri = process.env.MONGO_URI || process.env.MONGODB_URI;
 
-        if (uri) uri = uri.trim(); // Trim whitespace
+        if (!uri) {
+            console.warn('⚠️ MongoDB URI is not configured. Starting without persistent database access.');
+            return false;
+        }
+
+        uri = uri.trim();
 
         console.log('Checking MongoDB URI format...');
 
@@ -59,14 +64,14 @@ const connectDB = async () => {
         console.log(`Attempting to connect to MongoDB with URI: ${uri.replace(/:([^:@]+)@/, ':****@')}`); // Mask credentials
 
         await mongoose.connect(uri, {
-            // New Mongoose 6+ defaults render these options unnecessary but adding for clarity if using older versions or specific needs
-            // useStylesParser and useUnifiedTopology are now default true
+            serverSelectionTimeoutMS: 2500,
         });
 
         console.log(`✅ MongoDB Connected: ${mongoose.connection.host}`);
+        return true;
     } catch (error) {
-        console.error(`❌ Error : ${error.message}`);
-        process.exit(1);
+        console.warn('⚠️ MongoDB is unavailable. Continuing without persistent database access.');
+        return false;
     }
 };
 
