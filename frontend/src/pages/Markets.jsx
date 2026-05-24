@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import MainLayout from '../layouts/MainLayout';
 import { Search, Filter, TrendingUp, TrendingDown, ArrowUpRight, Star } from 'lucide-react';
 import BentoCard from '../components/ui/BentoCard';
@@ -22,9 +23,6 @@ export default function Markets() {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedAsset, setSelectedAsset] = useState(null);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
-    const [marketData, setMarketData] = useState([]);
-
     const [filters, setFilters] = useState({
         minPrice: 0,
         performance: null, // 'gainers' | 'losers'
@@ -32,39 +30,31 @@ export default function Markets() {
         sortBy: 'marketCapDesc'
     });
 
-    // Fetch market data from API
-    useEffect(() => {
-        const fetchMarketData = async () => {
-            setIsLoading(true);
-            try {
-                const response = await fetch(`${API_BASE_URL}/crypto/market-cap?limit=100`);
-                const result = await response.json();
-
-                if (result.success) {
-                    const formatted = result.data.map(item => ({
-                        id: item.baseAsset.toUpperCase(),
-                        name: item.baseAsset,
-                        symbol: item.baseAsset,
-                        price: item.price,
-                        change: item.changePercent,
-                        rawVolume: item.volume,
-                        rawMarketCap: item.quoteVolume,
-                        type: 'Crypto'
-                    }));
-                    setMarketData(formatted);
-                }
-            } catch (error) {
-                console.error('Failed to fetch market data:', error);
-            } finally {
-                setIsLoading(false);
+    // Fetch market data from API using React Query
+    const { data: marketData = [], isLoading } = useQuery({
+        queryKey: ['marketData'],
+        queryFn: async () => {
+            const response = await fetch(`${API_BASE_URL}/crypto/market-cap?limit=100`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch market data');
             }
-        };
-
-        fetchMarketData();
-
-        const interval = setInterval(fetchMarketData, 5000); // 5s polling for near real-time
-        return () => clearInterval(interval);
-    }, []);
+            const result = await response.json();
+            if (result.success) {
+                return result.data.map(item => ({
+                    id: item.baseAsset.toUpperCase(),
+                    name: item.baseAsset,
+                    symbol: item.baseAsset,
+                    price: item.price,
+                    change: item.changePercent,
+                    rawVolume: item.volume,
+                    rawMarketCap: item.quoteVolume,
+                    type: 'Crypto'
+                }));
+            }
+            return [];
+        },
+        refetchInterval: 5000, // automatic background refresh every 5 seconds
+    });
 
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     useEffect(() => {

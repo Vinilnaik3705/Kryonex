@@ -12,6 +12,7 @@ const coinLogos = require("./routes/coinLogos");
 const errorHandler = require("./middleware/errorHandler");
 const rateLimiter = require("./middleware/rateLimiter");
 const connectDB = require("./config/db");
+const websocketService = require("./services/websocketService");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -73,7 +74,13 @@ app.use((req, res) => {
 app.use(errorHandler);
 
 if (require.main === module && !process.env.VERCEL) {
-    app.listen(PORT, () => {
+    const http = require("http");
+    const server = http.createServer(app);
+
+    // Initialize unified WebSocket gateway
+    websocketService.init(server);
+
+    server.listen(PORT, () => {
         console.log(`Server running on port ${PORT}`);
     });
 }

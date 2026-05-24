@@ -91,7 +91,7 @@ class CryptoAPI {
         const tradingPair = `${normalized}USDT`;
 
         const cacheKey = `crypto:dailyOpen:${tradingPair}`;
-        const cached = cacheService.get(cacheKey);
+        const cached = await cacheService.get(cacheKey);
         if (cached !== undefined && cached !== null) {
             return cached;
         }
@@ -112,7 +112,7 @@ class CryptoAPI {
                 if (response.data && response.data.length > 0) {
                     const openPrice = parseFloat(response.data[0][1]); // Index 1 is open price
                     // Cache for 1 hour
-                    cacheService.set(cacheKey, openPrice, 3600);
+                    await cacheService.set(cacheKey, openPrice, 3600);
                     return openPrice;
                 }
             } catch (error) {
@@ -137,7 +137,7 @@ class CryptoAPI {
 
         // Check cache first (5s TTL for near real-time)
         const cacheKey = `crypto:price:${tradingPair}`;
-        const cached = cacheService.get(cacheKey);
+        const cached = await cacheService.get(cacheKey);
         if (cached) {
             return cached;
         }
@@ -177,7 +177,7 @@ class CryptoAPI {
                 timestamp: new Date(ticker.closeTime).toISOString()
             };
 
-            cacheService.set(cacheKey, data, this.cacheTTL.price);
+            await cacheService.set(cacheKey, data, this.cacheTTL.price);
             return data;
         } catch (error) {
             if (error.response?.status === 400) {
@@ -195,7 +195,7 @@ class CryptoAPI {
         const tradingPair = `${normalized}USDT`;
 
         const cacheKey = `crypto:history:${tradingPair}:${interval}:${limit}`;
-        const cached = cacheService.get(cacheKey);
+        const cached = await cacheService.get(cacheKey);
 
         if (cached) {
             return cached;
@@ -219,7 +219,7 @@ class CryptoAPI {
                 volume: parseFloat(candle[5])
             }));
 
-            cacheService.set(cacheKey, data, this.cacheTTL.history); // 30s cache
+            await cacheService.set(cacheKey, data, this.cacheTTL.history); // 30s cache
             return data;
         } catch (error) {
             throw new Error(`Failed to fetch crypto history for ${symbol}: ${error.message}`);
@@ -231,7 +231,7 @@ class CryptoAPI {
      */
     async getTopByMarketCap(limit = 50) {
         const cacheKey = `crypto:top:${limit}`;
-        const cached = cacheService.get(cacheKey);
+        const cached = await cacheService.get(cacheKey);
 
         if (cached) {
             return cached;
@@ -277,7 +277,7 @@ class CryptoAPI {
                 })
             );
 
-            cacheService.set(cacheKey, data, this.cacheTTL.market); // 5s cache for near real-time
+            await cacheService.set(cacheKey, data, this.cacheTTL.market); // 5s cache for near real-time
             return data;
         } catch (error) {
             console.log('Binance API failed, using fallback crypto data:', error.message);
@@ -292,7 +292,7 @@ class CryptoAPI {
             }));
 
             // Cache fallback for 5 minutes
-            cacheService.set(cacheKey, fallbackData, 30); // Short cache for fallback too
+            await cacheService.set(cacheKey, fallbackData, 30); // Short cache for fallback too
             return fallbackData;
         }
     }
@@ -302,7 +302,7 @@ class CryptoAPI {
      */
     async getTrending(limit = 10) {
         const cacheKey = `crypto:trending:${limit}`;
-        const cached = cacheService.get(cacheKey);
+        const cached = await cacheService.get(cacheKey);
 
         if (cached) {
             return cached;
@@ -365,7 +365,7 @@ class CryptoAPI {
             );
 
             const data = { gainers, losers };
-            cacheService.set(cacheKey, data, this.cacheTTL.market); // 5s cache for near real-time
+            await cacheService.set(cacheKey, data, this.cacheTTL.market); // 5s cache for near real-time
             return data;
         } catch (error) {
             throw new Error(`Failed to fetch trending cryptocurrencies: ${error.message}`);
@@ -377,7 +377,7 @@ class CryptoAPI {
      */
     async search(query) {
         const cacheKey = `crypto:search:${query}`;
-        const cached = cacheService.get(cacheKey);
+        const cached = await cacheService.get(cacheKey);
 
         if (cached) {
             return cached;
@@ -401,7 +401,7 @@ class CryptoAPI {
                     status: s.status
                 }));
 
-            cacheService.set(cacheKey, results, this.cacheTTL.search); // 60s cache for search
+            await cacheService.set(cacheKey, results, this.cacheTTL.search); // 60s cache for search
             return results;
         } catch (error) {
             throw new Error(`Failed to search cryptocurrencies: ${error.message}`);

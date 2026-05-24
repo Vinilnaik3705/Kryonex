@@ -11,7 +11,7 @@ export default function Features() {
                 {
                     title: 'Trading Experience',
                     list: [
-                        'Live market views for crypto, ETFs, and stocks',
+                        'Live market views for top cryptocurrencies',
                         'Simulated buy/sell workflow',
                         'Wallet and portfolio tracking',
                         'Watchlist management'

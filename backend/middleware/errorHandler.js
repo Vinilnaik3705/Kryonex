@@ -1,8 +1,10 @@
+const logger = require('../services/loggerService');
+
 /**
  * Centralized error handling middleware
  */
 const errorHandler = (err, req, res, next) => {
-    console.error('Error:', err);
+    logger.error(`${req.method} ${req.originalUrl || req.url} - Error: ${err.message}`, { stack: err.stack });
 
     // Default error status and message
     let statusCode = err.statusCode || 500;

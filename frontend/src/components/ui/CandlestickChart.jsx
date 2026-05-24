@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createChart, CandlestickSeries, HistogramSeries, LineSeries } from 'lightweight-charts';
-import axios from 'axios';
 import API_BASE_URL from '../../config/api';
 import { formatPrice as smartFormatPrice } from '../../utils/formatPrice';
 
@@ -25,42 +24,6 @@ const MAX_HISTOGRAM_VALUE = 90071992547409.91;
 
 const normalizeAsset = (assetId = '') => String(assetId).trim();
 
-const isCryptoAsset = (assetId = '') => {
-    const normalized = normalizeAsset(assetId).toLowerCase();
-    return normalized.endsWith('usdt') || Object.prototype.hasOwnProperty.call(CRYPTO_SYMBOLS, normalized);
-};
-
-const inferAssetType = (assetId = '') => {
-    if (isCryptoAsset(assetId)) return 'crypto';
-    const normalized = normalizeAsset(assetId).toUpperCase();
-    if (['SPY', 'QQQ', 'DIA', 'IWM', 'VTI', 'VOO', 'ARKK', 'XLF', 'XLK'].includes(normalized)) return 'etf';
-    return 'stock';
-};
-
-const getYahooSymbol = (symbol, assetType, exchange) => {
-    const normalized = normalizeAsset(symbol).toUpperCase();
-    if (assetType === 'etf') return normalized;
-    if (exchange === 'NSE') return `${normalized}.NS`;
-    if (exchange === 'BSE') return `${normalized}.BO`;
-    return normalized;
-};
-
-const isMarketOpen = () => {
-    const now = new Date();
-    const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
-    const day = now.getUTCDay();
-    const isWeekday = day >= 1 && day <= 5;
-    return isWeekday && utcMinutes >= 870 && utcMinutes < 1260;
-};
-
-const normalizeAssetType = (value) => {
-    const normalized = String(value || '').toLowerCase();
-    if (normalized === 'crypto') return 'crypto';
-    if (normalized === 'etf') return 'etf';
-    if (normalized === 'stock' || normalized === 'stocks') return 'stock';
-    return '';
-};
-
 const getCryptoSymbol = (assetId = '') => {
     const normalized = normalizeAsset(assetId).toLowerCase();
     if (normalized.endsWith('usdt')) return normalized.toUpperCase();
@@ -68,33 +31,13 @@ const getCryptoSymbol = (assetId = '') => {
     return `${normalizeAsset(assetId).toUpperCase()}USDT`;
 };
 
-const formatPrice = (price, assetIsCrypto) => {
-    if (assetIsCrypto) {
-        return smartFormatPrice(price);
-    }
-
-    const value = Number(price);
-    if (!Number.isFinite(value)) return '$0';
-    return `$${value.toFixed(2)}`;
+const formatPrice = (price) => {
+    return smartFormatPrice(price);
 };
 
 const parseNumber = (value, fallback = 0) => {
     const numeric = Number.parseFloat(value);
     return Number.isFinite(numeric) ? numeric : fallback;
-};
-
-const parseStockCandle = (item) => {
-    const timeValue = item.date || item.timestamp || item.time || Date.now();
-    const parsedTime = Number.isFinite(Number(timeValue)) ? Number(timeValue) : Math.floor(new Date(timeValue).getTime() / 1000);
-
-    return {
-        time: parsedTime,
-        open: parseNumber(item.open),
-        high: parseNumber(item.high),
-        low: parseNumber(item.low),
-        close: parseNumber(item.close),
-        volume: parseNumber(item.volume),
-    };
 };
 
 const parseCryptoCandle = (item) => ({
@@ -133,14 +76,6 @@ const CRYPTO_TIMEFRAMES = {
     '1W': { interval: '4h', limit: 42, startOffset: 7 * 24 * 60 * 60 * 1000 },
     '1M': { interval: '1d', limit: 30, startOffset: 30 * 24 * 60 * 60 * 1000 },
     '1Y': { interval: '1w', limit: 52, startOffset: 365 * 24 * 60 * 60 * 1000 },
-};
-
-const STOCK_TIMEFRAMES = {
-    '1D': { period: '1d', interval: '1m' },
-    '1W': { period: '5d', interval: '15m' },
-    '1M': { period: '1mo', interval: '1h' },
-    '3M': { period: '3mo', interval: '1d' },
-    '1Y': { period: '1y', interval: '1wk' },
 };
 
 const upsertCandle = (candles, candle) => {
@@ -205,17 +140,12 @@ const calculateEma = (candles, period = 9) => {
     return output;
 };
 
-const generateFallbackCandles = (assetSymbol, timeframe, assetType) => {
+const generateFallbackCandles = (assetSymbol, timeframe) => {
     const seedBase = Array.from(String(assetSymbol)).reduce((sum, char) => sum + char.charCodeAt(0), 0) + String(timeframe).length;
-    const isCrypto = assetType === 'crypto';
-    const basePrice = isCrypto
-        ? (String(assetSymbol).toLowerCase().includes('btc') ? 79314 : String(assetSymbol).toLowerCase().includes('eth') ? 3400 : 140)
-        : (String(assetSymbol).toUpperCase().startsWith('A') ? 180 : 240);
+    const basePrice = String(assetSymbol).toLowerCase().includes('btc') ? 79314 : String(assetSymbol).toLowerCase().includes('eth') ? 3400 : 140;
     const now = Math.floor(Date.now() / 1000);
-    const step = isCrypto ? basePrice * 0.01 : basePrice * 0.008;
-    const candleCount = isCrypto
-        ? (CRYPTO_TIMEFRAMES[timeframe]?.limit || 30)
-        : 60;
+    const step = basePrice * 0.01;
+    const candleCount = CRYPTO_TIMEFRAMES[timeframe]?.limit || 30;
 
     return Array.from({ length: candleCount }, (_, index) => {
         const wave = Math.sin((seedBase + index) / 3) * step * 2.2;
@@ -236,11 +166,63 @@ const generateFallbackCandles = (assetSymbol, timeframe, assetType) => {
     });
 };
 
+const tryBackendWebSocket = (topic, onLiveUpdate, onFallback) => {
+    let wsUrl = API_BASE_URL.replace(/^http/, 'ws').replace(/\/api\/?$/, '/ws');
+    if (import.meta.env.VITE_WS_URL) {
+        wsUrl = import.meta.env.VITE_WS_URL;
+    }
+    
+    let hasFailed = false;
+
+    try {
+        console.log(`Connecting to backend WebSocket Gateway: ${wsUrl}`);
+        const ws = new WebSocket(wsUrl);
+        
+        ws.onopen = () => {
+            if (hasFailed) return;
+            console.log(`✅ Connected to backend WS. Subscribing to: ${topic}`);
+            ws.send(JSON.stringify({ action: 'subscribe', topic }));
+        };
+
+        ws.onmessage = (event) => {
+            if (hasFailed) return;
+            try {
+                const message = JSON.parse(event.data);
+                if (message.type === 'live' && message.topic === topic && message.data) {
+                    onLiveUpdate(message.data);
+                }
+            } catch (e) {
+                console.error('Error parsing backend WS message:', e);
+            }
+        };
+
+        ws.onerror = (err) => {
+            if (hasFailed) return;
+            console.warn('Backend WS error:', err);
+            hasFailed = true;
+            ws.close();
+            onFallback();
+        };
+
+        ws.onclose = () => {
+            if (hasFailed) return;
+            console.warn('Backend WS connection closed. Running fallback...');
+            hasFailed = true;
+            onFallback();
+        };
+
+        return ws;
+    } catch (err) {
+        console.warn('Failed to initialize backend WS connection:', err);
+        hasFailed = true;
+        onFallback();
+        return null;
+    }
+};
+
 const CandlestickChart = ({
     symbol,
     assetId,
-    type,
-    exchange,
     timeframe = '1D',
     height = 400,
     showVolume = true,
@@ -261,7 +243,6 @@ const CandlestickChart = ({
     const smaSeriesRef = useRef(null);
     const emaSeriesRef = useRef(null);
     const wsRef = useRef(null);
-    const refreshTimerRef = useRef(null);
     const resizeObserverRef = useRef(null);
     const fitContentRef = useRef(false);
     const requestIdRef = useRef(0);
@@ -270,14 +251,10 @@ const CandlestickChart = ({
     const [candles, setCandles] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [errorMessage, setErrorMessage] = useState('');
-    const [marketOpen, setMarketOpen] = useState(true);
+    
     const assetSymbol = useMemo(() => normalizeAsset(symbol || assetId || ''), [symbol, assetId]);
-    const assetType = useMemo(() => normalizeAssetType(type) || inferAssetType(assetSymbol), [type, assetSymbol]);
-    const assetIsCrypto = assetType === 'crypto';
-    const yahooSymbol = useMemo(() => getYahooSymbol(assetSymbol, assetType, exchange), [assetSymbol, assetType, exchange]);
-    const historyCacheKey = useMemo(() => `${assetType}:${assetSymbol}:${timeframe}`, [assetType, assetSymbol, timeframe]);
-
-    const priceFormatter = useMemo(() => (priceValue) => formatPrice(priceValue, assetIsCrypto), [assetIsCrypto]);
+    const historyCacheKey = useMemo(() => `crypto:${assetSymbol}:${timeframe}`, [assetSymbol, timeframe]);
+    const priceFormatter = useMemo(() => (priceValue) => formatPrice(priceValue), []);
 
     useEffect(() => {
         fitContentRef.current = false;
@@ -415,11 +392,6 @@ const CandlestickChart = ({
                 wsRef.current.close();
                 wsRef.current = null;
             }
-
-            if (refreshTimerRef.current) {
-                clearInterval(refreshTimerRef.current);
-                refreshTimerRef.current = null;
-            }
         };
 
         const isStaleRequest = (requestId) => requestId !== requestIdRef.current;
@@ -447,181 +419,140 @@ const CandlestickChart = ({
             }
 
             try {
-                if (assetIsCrypto) {
-                    const cryptoSymbol = getCryptoSymbol(assetSymbol);
-                    const timeframeConfig = getCryptoTimeframeConfig(timeframe);
-                    const endTime = Date.now();
-                    const startTime = endTime - (timeframeConfig.startOffset || 30 * 24 * 60 * 60 * 1000);
-                    const response = await fetch(
-                        `https://api.binance.com/api/v3/klines?symbol=${cryptoSymbol}&interval=${timeframeConfig.interval}&limit=${timeframeConfig.limit}&startTime=${startTime}&endTime=${endTime}`
-                    );
+                const cryptoSymbol = getCryptoSymbol(assetSymbol);
+                const timeframeConfig = getCryptoTimeframeConfig(timeframe);
+                const endTime = Date.now();
+                const startTime = endTime - (timeframeConfig.startOffset || 30 * 24 * 60 * 60 * 1000);
+                const response = await fetch(
+                    `https://api.binance.com/api/v3/klines?symbol=${cryptoSymbol}&interval=${timeframeConfig.interval}&limit=${timeframeConfig.limit}&startTime=${startTime}&endTime=${endTime}`
+                );
 
-                    if (!response.ok) {
-                        throw new Error(`Binance request failed: ${response.status}`);
-                    }
+                if (!response.ok) {
+                    throw new Error(`Binance request failed: ${response.status}`);
+                }
 
-                    const payload = await response.json();
-                    const parsedCandles = Array.isArray(payload)
-                        ? payload.map(parseCryptoCandle)
-                        : [];
+                const payload = await response.json();
+                const parsedCandles = Array.isArray(payload)
+                    ? payload.map(parseCryptoCandle)
+                    : [];
 
-                    if (isStaleRequest(requestId)) return;
+                if (isStaleRequest(requestId)) return;
 
-                    if (!parsedCandles.length) {
-                        setErrorMessage(`No chart data available for ${assetSymbol}`);
-                    }
+                if (!parsedCandles.length) {
+                    setErrorMessage(`No chart data available for ${assetSymbol}`);
+                }
 
-                    const rawCandles = parsedCandles.length > 0 ? parsedCandles : generateFallbackCandles(assetSymbol, timeframe, assetType);
-                    const nextCandles = typeof timeframeConfig.transform === 'function' ? timeframeConfig.transform(rawCandles) : rawCandles;
-                    rawCryptoCandlesRef.current = rawCandles;
-                    volumeScaleRef.current = getVolumeScale(nextCandles);
-                    historyCache.set(historyCacheKey, nextCandles);
-                    setCandles(nextCandles);
-                    onPriceUpdateRef.current?.(nextCandles.at(-1)?.close);
+                const rawCandles = parsedCandles.length > 0 ? parsedCandles : generateFallbackCandles(assetSymbol, timeframe);
+                const nextCandles = typeof timeframeConfig.transform === 'function' ? timeframeConfig.transform(rawCandles) : rawCandles;
+                rawCryptoCandlesRef.current = rawCandles;
+                volumeScaleRef.current = getVolumeScale(nextCandles);
+                historyCache.set(historyCacheKey, nextCandles);
+                setCandles(nextCandles);
+                onPriceUpdateRef.current?.(nextCandles.at(-1)?.close);
 
-                    const streamInterval = timeframeConfig.streamInterval || timeframeConfig.interval;
-                    wsRef.current = new WebSocket(
-                        `wss://stream.binance.com:9443/ws/${cryptoSymbol.toLowerCase()}@kline_${streamInterval}`
-                    );
+                const streamInterval = timeframeConfig.streamInterval || timeframeConfig.interval;
+                const startCryptoLiveStream = () => {
+                    try {
+                        wsRef.current = new WebSocket(
+                            `wss://stream.binance.com:9443/ws/${cryptoSymbol.toLowerCase()}@kline_${streamInterval}`
+                        );
 
-                    wsRef.current.onmessage = (event) => {
-                        try {
-                            if (isStaleRequest(requestId)) return;
+                        wsRef.current.onmessage = (event) => {
+                            try {
+                                if (isStaleRequest(requestId)) return;
 
-                            const message = JSON.parse(event.data);
-                            const kline = message?.k;
-                            if (!kline) return;
+                                const message = JSON.parse(event.data);
+                                const kline = message?.k;
+                                if (!kline) return;
 
-                            const liveCandle = {
-                                time: Math.floor(Number(kline.t) / 1000),
-                                open: parseNumber(kline.o),
-                                high: parseNumber(kline.h),
-                                low: parseNumber(kline.l),
-                                close: parseNumber(kline.c),
-                                volume: parseNumber(kline.v),
-                            };
+                                const liveCandle = {
+                                    time: Math.floor(Number(kline.t) / 1000),
+                                    open: parseNumber(kline.o),
+                                    high: parseNumber(kline.h),
+                                    low: parseNumber(kline.l),
+                                    close: parseNumber(kline.c),
+                                    volume: parseNumber(kline.v),
+                                };
 
-                            if (typeof timeframeConfig.transform === 'function') {
-                                const nextRawCandles = upsertCandle(rawCryptoCandlesRef.current, liveCandle);
-                                rawCryptoCandlesRef.current = nextRawCandles;
-                                const nextCandles = timeframeConfig.transform(nextRawCandles);
-                                volumeScaleRef.current = getVolumeScale(nextCandles);
-                                setCandles(nextCandles);
-                                onPriceUpdateRef.current?.(nextCandles.at(-1)?.close);
-                            } else {
-                                candleSeriesRef.current?.update(liveCandle);
-                                if (volumeSeriesRef.current) {
-                                    volumeSeriesRef.current.update({
-                                        time: liveCandle.time,
-                                        value: normalizeVolume(liveCandle.volume || 0, volumeScaleRef.current),
-                                        color: liveCandle.close >= liveCandle.open ? 'rgba(38, 166, 154, 0.35)' : 'rgba(239, 83, 80, 0.35)',
+                                if (typeof timeframeConfig.transform === 'function') {
+                                    const nextRawCandles = upsertCandle(rawCryptoCandlesRef.current, liveCandle);
+                                    rawCryptoCandlesRef.current = nextRawCandles;
+                                    const nextCandles = timeframeConfig.transform(nextRawCandles);
+                                    volumeScaleRef.current = getVolumeScale(nextCandles);
+                                    setCandles(nextCandles);
+                                    onPriceUpdateRef.current?.(nextCandles.at(-1)?.close);
+                                } else {
+                                    candleSeriesRef.current?.update(liveCandle);
+                                    if (volumeSeriesRef.current) {
+                                        volumeSeriesRef.current.update({
+                                            time: liveCandle.time,
+                                            value: normalizeVolume(liveCandle.volume || 0, volumeScaleRef.current),
+                                            color: liveCandle.close >= liveCandle.open ? 'rgba(38, 166, 154, 0.35)' : 'rgba(239, 83, 80, 0.35)',
+                                        });
+                                    }
+                                    onPriceUpdateRef.current?.(liveCandle.close);
+
+                                    setCandles((previous) => {
+                                        if (isStaleRequest(requestId)) return previous;
+
+                                        return upsertCandle(previous, liveCandle);
                                     });
                                 }
-                                onPriceUpdateRef.current?.(liveCandle.close);
-
-                                setCandles((previous) => {
-                                    if (isStaleRequest(requestId)) return previous;
-
-                                    return upsertCandle(previous, liveCandle);
-                                });
+                            } catch (error) {
+                                console.error('Binance websocket parse error:', error);
                             }
-                        } catch (error) {
-                            console.error('Binance websocket parse error:', error);
-                        }
-                    };
+                        };
 
-                    wsRef.current.onerror = (error) => {
-                        console.error('Binance websocket error:', error);
-                    };
-                } else {
-                    const stockTimeframes = STOCK_TIMEFRAMES[timeframe] || STOCK_TIMEFRAMES['1M'];
-                    const historyEndpoint = assetType === 'etf'
-                        ? `${API_BASE_URL}/etfs/history/${normalizeAsset(assetSymbol).toUpperCase()}`
-                        : `${API_BASE_URL}/stocks/history/${normalizeAsset(assetSymbol).toUpperCase()}`;
-                    const quoteEndpoint = assetType === 'etf'
-                        ? `${API_BASE_URL}/etfs/quote/${yahooSymbol}`
-                        : `${API_BASE_URL}/stocks/quote/${yahooSymbol}`;
-
-                    const response = await axios.get(historyEndpoint, {
-                        params: stockTimeframes,
-                    });
-
-                    if (isStaleRequest(requestId)) return;
-
-                    const history = Array.isArray(response.data?.data)
-                        ? response.data.data
-                        : Array.isArray(response.data)
-                            ? response.data
-                            : [];
-
-                    const parsedCandles = history.map(parseStockCandle).filter((candle) => candle.time && candle.open && candle.high && candle.low && candle.close);
-                    if (!parsedCandles.length) {
-                        setErrorMessage(`No chart data available for ${assetSymbol}`);
+                        wsRef.current.onerror = (error) => {
+                            console.error('Binance websocket error:', error);
+                        };
+                    } catch (err) {
+                        console.error('Binance websocket init error:', err);
                     }
+                };
 
-                    const nextCandles = parsedCandles.length > 0 ? parsedCandles : generateFallbackCandles(assetSymbol, timeframe, assetType);
-                    volumeScaleRef.current = getVolumeScale(nextCandles);
-                    historyCache.set(historyCacheKey, nextCandles);
-                    setCandles(nextCandles);
-                    onPriceUpdateRef.current?.(nextCandles.at(-1)?.close);
-
-                    setMarketOpen(isMarketOpen());
-                    const pollStockQuote = async () => {
-                        try {
-                            if (isStaleRequest(requestId)) return;
-
-                            const quoteResponse = await axios.get(quoteEndpoint);
-                            const quote = quoteResponse.data?.data || {};
-                            const lastClose = parsedCandles.at(-1)?.close || 0;
-                            const livePrice = parseNumber(quote.price, lastClose);
-                            const quoteCandle = {
-                                time: quote.timestamp ? Math.floor(new Date(quote.timestamp).getTime() / 1000) : Math.floor(Date.now() / 1000),
-                                open: parseNumber(quote.open, parsedCandles.at(-1)?.open || lastClose || livePrice),
-                                high: parseNumber(quote.high, Math.max(parsedCandles.at(-1)?.high || 0, livePrice || 0)),
-                                low: parseNumber(quote.low, Math.min(parsedCandles.at(-1)?.low || livePrice || 0, livePrice || lastClose || 0)),
-                                close: livePrice,
-                                volume: parseNumber(quote.volume, parsedCandles.at(-1)?.volume || 0),
-                            };
-
-                            setMarketOpen(isMarketOpen());
-                            candleSeriesRef.current?.update(quoteCandle);
-                            volumeSeriesRef.current?.update({
-                                time: quoteCandle.time,
-                                value: normalizeVolume(quoteCandle.volume || 0, volumeScaleRef.current),
-                                color: quoteCandle.close >= quoteCandle.open ? 'rgba(38, 166, 154, 0.35)' : 'rgba(239, 83, 80, 0.35)',
+                const handleLiveUpdate = (liveCandle) => {
+                    if (isStaleRequest(requestId)) return;
+                    if (typeof timeframeConfig.transform === 'function') {
+                        const nextRawCandles = upsertCandle(rawCryptoCandlesRef.current, liveCandle);
+                        rawCryptoCandlesRef.current = nextRawCandles;
+                        const nextCandles = timeframeConfig.transform(nextRawCandles);
+                        volumeScaleRef.current = getVolumeScale(nextCandles);
+                        setCandles(nextCandles);
+                        onPriceUpdateRef.current?.(nextCandles.at(-1)?.close);
+                    } else {
+                        candleSeriesRef.current?.update(liveCandle);
+                        if (volumeSeriesRef.current) {
+                            volumeSeriesRef.current.update({
+                                time: liveCandle.time,
+                                value: normalizeVolume(liveCandle.volume || 0, volumeScaleRef.current),
+                                color: liveCandle.close >= liveCandle.open ? 'rgba(38, 166, 154, 0.35)' : 'rgba(239, 83, 80, 0.35)',
                             });
-                            onPriceUpdateRef.current?.(quoteCandle.close);
-
-                            setCandles((previous) => {
-                                if (isStaleRequest(requestId)) return previous;
-
-                                if (!previous.length) return [quoteCandle];
-                                const nextCandles = [...previous];
-                                const lastCandle = nextCandles[nextCandles.length - 1];
-
-                                if (lastCandle.time === quoteCandle.time) {
-                                    nextCandles[nextCandles.length - 1] = quoteCandle;
-                                } else if (quoteCandle.time > lastCandle.time) {
-                                    nextCandles.push(quoteCandle);
-                                }
-
-                                return nextCandles.slice(-250);
-                            });
-                        } catch (refreshError) {
-                            console.error('Stock quote polling failed:', refreshError);
                         }
-                    };
+                        onPriceUpdateRef.current?.(liveCandle.close);
 
-                    pollStockQuote();
-                    const pollInterval = isMarketOpen() ? 10000 : 60000;
-                    refreshTimerRef.current = setInterval(pollStockQuote, pollInterval);
-                }
+                        setCandles((previous) => {
+                            if (isStaleRequest(requestId)) return previous;
+                            return upsertCandle(previous, liveCandle);
+                        });
+                    }
+                };
+
+                // Try backend WS gateway first, fallback to direct Binance stream
+                wsRef.current = tryBackendWebSocket(
+                    `crypto:${cryptoSymbol}`,
+                    handleLiveUpdate,
+                    () => {
+                        if (isStaleRequest(requestId)) return;
+                        startCryptoLiveStream();
+                    }
+                );
             } catch (error) {
                 if (isStaleRequest(requestId)) return;
 
                 console.error('Failed to load historical candles:', error);
                 setErrorMessage(`Failed to load chart for ${assetSymbol}`);
-                const fallbackCandles = generateFallbackCandles(assetSymbol, timeframe, assetType);
+                const fallbackCandles = generateFallbackCandles(assetSymbol, timeframe);
                 historyCache.set(historyCacheKey, fallbackCandles);
                 setCandles(fallbackCandles);
                 onPriceUpdate?.(fallbackCandles.at(-1)?.close);
@@ -638,7 +569,7 @@ const CandlestickChart = ({
             requestIdRef.current += 1;
             cleanupRealtime();
         };
-    }, [assetSymbol, timeframe, assetType, assetIsCrypto, historyCacheKey]);
+    }, [assetSymbol, timeframe, historyCacheKey]);
 
     useEffect(() => {
         if (!chartRef.current || !candleSeriesRef.current || candles.length === 0) return;
@@ -684,7 +615,7 @@ const CandlestickChart = ({
             <div className="absolute left-4 top-4 z-20 flex items-center gap-2 rounded-full border border-white/10 bg-black/45 px-3 py-1.5 backdrop-blur-md">
                 <span className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
                 <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-300">
-                    {assetIsCrypto ? 'Live' : marketOpen ? 'Updating every 10s' : 'Market closed - updating slower'}
+                    Live
                 </span>
             </div>
             {isLoading && candles.length === 0 && (

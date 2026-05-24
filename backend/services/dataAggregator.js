@@ -1,14 +1,12 @@
-const stocksAPI = require('../api-integration/stocksAPI');
-const etfsAPI = require('../api-integration/etfsAPI');
 const cryptoAPI = require('../api-integration/cryptoAPI');
-const { normalizeStockData, normalizeETFData, normalizeCryptoData } = require('../api-integration/dataModels');
+const { normalizeCryptoData } = require('../api-integration/dataModels');
 
 /**
- * Data aggregator service for combining multiple data sources
+ * Data aggregator service for cryptocurrency data
  */
 class DataAggregator {
     /**
-     * Get mixed portfolio data (stocks, ETFs, crypto)
+     * Get mixed portfolio data (only crypto supported now)
      */
     async getPortfolioData(symbols) {
         const results = await Promise.allSettled(
@@ -16,22 +14,11 @@ class DataAggregator {
                 const { symbol, type } = item;
 
                 try {
-                    switch (type.toLowerCase()) {
-                        case 'stock':
-                            const stockData = await stocksAPI.getQuote(symbol);
-                            return normalizeStockData(stockData);
-
-                        case 'etf':
-                            const etfData = await etfsAPI.getQuote(symbol);
-                            return normalizeETFData(etfData);
-
-                        case 'crypto':
-                            const cryptoData = await cryptoAPI.getPrice(symbol);
-                            return normalizeCryptoData(cryptoData);
-
-                        default:
-                            throw new Error(`Unknown asset type: ${type}`);
+                    if (type.toLowerCase() !== 'crypto') {
+                        throw new Error(`Asset type no longer supported: ${type}`);
                     }
+                    const cryptoData = await cryptoAPI.getPrice(symbol);
+                    return normalizeCryptoData(cryptoData);
                 } catch (error) {
                     return {
                         symbol,
@@ -56,22 +43,13 @@ class DataAggregator {
     }
 
     /**
-     * Get market overview (top stocks, ETFs, crypto)
+     * Get market overview (top crypto only)
      */
     async getMarketOverview() {
         try {
-            const [movers, popularETFs, topCrypto] = await Promise.all([
-                stocksAPI.getMovers(),
-                etfsAPI.getPopular().then(etfs => etfs.slice(0, 5)),
-                cryptoAPI.getTopByMarketCap(5)
-            ]);
+            const topCrypto = await cryptoAPI.getTopByMarketCap(5);
 
             return {
-                stocks: {
-                    gainers: movers.gainers,
-                    losers: movers.losers
-                },
-                etfs: popularETFs,
                 crypto: topCrypto,
                 timestamp: new Date().toISOString()
             };
@@ -81,19 +59,13 @@ class DataAggregator {
     }
 
     /**
-     * Search across all asset types
+     * Search across cryptocurrency
      */
     async searchAll(query) {
-        const [stocks, etfs, crypto] = await Promise.allSettled([
-            stocksAPI.search(query),
-            etfsAPI.search(query),
-            cryptoAPI.search(query)
-        ]);
+        const crypto = await cryptoAPI.search(query).catch(() => []);
 
         return {
-            stocks: stocks.status === 'fulfilled' ? stocks.value : [],
-            etfs: etfs.status === 'fulfilled' ? etfs.value : [],
-            crypto: crypto.status === 'fulfilled' ? crypto.value : []
+            crypto: crypto || []
         };
     }
 
@@ -122,8 +94,6 @@ class DataAggregator {
             totalChangePercent: avgChangePercent,
             assetCount: validData.length,
             byType: {
-                stocks: validData.filter(i => i.type === 'stock').length,
-                etfs: validData.filter(i => i.type === 'etf').length,
                 crypto: validData.filter(i => i.type === 'crypto').length
             }
         };
