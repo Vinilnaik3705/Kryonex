@@ -11,7 +11,7 @@ const simulationRoutes = require("./routes/simulationRoutes");
 const coinLogos = require("./routes/coinLogos");
 const errorHandler = require("./middleware/errorHandler");
 const rateLimiter = require("./middleware/rateLimiter");
-const connectDB = require("./config/db");
+const { connectDB }= require("./config/db");
 const websocketService = require("./services/websocketService");
 
 const app = express();
