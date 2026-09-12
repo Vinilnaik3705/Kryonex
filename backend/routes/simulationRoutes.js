@@ -1,6 +1,6 @@
 const express = require('express');
-const mongoose = require('mongoose');
 const SimulationState = require('../models/SimulationState');
+const { isDatabaseConnected } = require('../config/db');
 const { protect } = require('../middleware/authMiddleware');
 
 const router = express.Router();
@@ -12,8 +12,6 @@ const getDefaultSimulationState = (userId) => ({
     portfolioHoldings: [],
 });
 
-const isMongoConnected = () => mongoose.connection.readyState === 1;
-
 const saveSimulationState = async (req, res) => {
     try {
         const userId = req.auth?.userId;
@@ -23,7 +21,7 @@ const saveSimulationState = async (req, res) => {
 
         const { walletBalance, portfolioHoldings } = req.body || {};
 
-        if (!isMongoConnected()) {
+        if (!isDatabaseConnected()) {
             const nextState = {
                 userId,
                 walletBalance: Number.isFinite(Number(walletBalance)) ? Number(walletBalance) : 100000,
@@ -36,16 +34,11 @@ const saveSimulationState = async (req, res) => {
             return res.json({ success: true, data: nextState });
         }
 
-        const nextState = await SimulationState.findOneAndUpdate(
-            { userId },
-            {
-                userId,
-                walletBalance: Number.isFinite(Number(walletBalance)) ? Number(walletBalance) : 100000,
-                portfolioHoldings: Array.isArray(portfolioHoldings) ? portfolioHoldings : [],
-                lastSyncedAt: new Date(),
-            },
-            { upsert: true, new: true, setDefaultsOnInsert: true }
-        ).lean();
+        const nextState = await SimulationState.upsert({
+            userId,
+            walletBalance: Number.isFinite(Number(walletBalance)) ? Number(walletBalance) : 100000,
+            portfolioHoldings: Array.isArray(portfolioHoldings) ? portfolioHoldings : [],
+        });
 
         return res.json({ success: true, data: nextState });
     } catch (error) {
@@ -61,7 +54,7 @@ router.get('/state', protect, async (req, res) => {
             return res.status(401).json({ success: false, error: 'Not authenticated' });
         }
 
-        if (!isMongoConnected()) {
+        if (!isDatabaseConnected()) {
             const state = fallbackSimulationStore.get(userId);
 
             return res.json({
@@ -70,7 +63,7 @@ router.get('/state', protect, async (req, res) => {
             });
         }
 
-        const state = await SimulationState.findOne({ userId }).lean();
+        const state = await SimulationState.findByUserId(userId);
 
         return res.json({
             success: true,
