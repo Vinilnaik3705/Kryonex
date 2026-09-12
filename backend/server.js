@@ -18,9 +18,12 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const corsOptions = {
     origin: [
+        const corsOptions = {
+    origin: [
         "http://localhost:5173",
         "http://localhost:3000",
         "https://kryonex.vercel.app",
+        "https://kryonex-seven.vercel.app",
         /^https:\/\/.*\.vercel\.app$/,
         "https://tradesim-9yh.pages.dev",
         /^https:\/\/.*\.tradesim-9yh\.pages\.dev$/
