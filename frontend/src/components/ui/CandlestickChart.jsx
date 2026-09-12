@@ -167,7 +167,8 @@ const generateFallbackCandles = (assetSymbol, timeframe) => {
 };
 
 const tryBackendWebSocket = (topic, onLiveUpdate, onFallback) => {
-    let wsUrl = API_BASE_URL.replace(/^http/, 'ws').replace(/\/api\/?$/, '/ws');
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    let wsUrl = `${protocol}//${window.location.host}/ws`;
     if (import.meta.env.VITE_WS_URL) {
         wsUrl = import.meta.env.VITE_WS_URL;
     }

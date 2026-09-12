@@ -4,6 +4,7 @@ const axios = require('axios');
 const router = express.Router();
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
+const GROQ_MODEL = process.env.GROQ_MODEL || 'qwen/qwen3.8-27b';
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
 
 const SYSTEM_PROMPT = `You are Kryonex AI, an elite cryptocurrency analyst AI embedded in the Kryonex trading platform.
@@ -64,7 +65,7 @@ router.post('/crypto-chat', async (req, res) => {
             GROQ_ENDPOINT,
             {
                 ...requestBody,
-                model: 'llama-3.3-70b-versatile',
+                model: GROQ_MODEL,
             },
             {
                 headers: {
