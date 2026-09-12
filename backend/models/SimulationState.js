@@ -1,74 +1,35 @@
-const mongoose = require('mongoose');
+const { getPool } = require('../config/db');
 
-const tradeSchema = new mongoose.Schema({
-    date: {
-        type: Date,
-        default: Date.now,
-    },
-    type: {
-        type: String,
-        enum: ['buy', 'sell'],
-        required: true,
-    },
-    quantity: {
-        type: Number,
-        required: true,
-    },
-    price: {
-        type: Number,
-        required: true,
-    },
-    total: {
-        type: Number,
-        required: true,
-    },
-}, { _id: false });
-
-const holdingSchema = new mongoose.Schema({
-    symbol: {
-        type: String,
-        required: true,
-        trim: true,
-        uppercase: true,
-    },
-    type: {
-        type: String,
-        default: 'crypto',
-    },
-    quantity: {
-        type: Number,
-        required: true,
-    },
-    buyPrice: {
-        type: Number,
-        required: true,
-    },
-    trades: {
-        type: [tradeSchema],
-        default: [],
-    },
-}, { _id: false });
-
-const simulationStateSchema = new mongoose.Schema({
-    userId: {
-        type: String,
-        required: true,
-        unique: true,
-    },
-    walletBalance: {
-        type: Number,
-        default: 100000,
-    },
-    portfolioHoldings: {
-        type: [holdingSchema],
-        default: [],
-    },
-    lastSyncedAt: {
-        type: Date,
-        default: Date.now,
-    },
-}, {
-    timestamps: true,
+const toState = (row) => row && ({
+    userId: row.user_id,
+    walletBalance: Number(row.wallet_balance),
+    portfolioHoldings: row.portfolio_holdings,
+    lastSyncedAt: row.last_synced_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
 });
 
-module.exports = mongoose.model('SimulationState', simulationStateSchema);
+const findByUserId = async (userId) => {
+    const result = await getPool().query(
+        'SELECT * FROM simulation_states WHERE user_id = $1',
+        [userId]
+    );
+    return toState(result.rows[0]);
+};
+
+const upsert = async ({ userId, walletBalance, portfolioHoldings }) => {
+    const result = await getPool().query(
+        `INSERT INTO simulation_states (user_id, wallet_balance, portfolio_holdings, last_synced_at, updated_at)
+         VALUES ($1, $2, $3::jsonb, NOW(), NOW())
+         ON CONFLICT (user_id) DO UPDATE SET
+            wallet_balance = EXCLUDED.wallet_balance,
+            portfolio_holdings = EXCLUDED.portfolio_holdings,
+            last_synced_at = NOW(),
+            updated_at = NOW()
+         RETURNING *`,
+        [userId, walletBalance, JSON.stringify(portfolioHoldings)]
+    );
+    return toState(result.rows[0]);
+};
+
+module.exports = { findByUserId, upsert };
