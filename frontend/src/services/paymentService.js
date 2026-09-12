@@ -27,26 +27,26 @@ export const paymentService = {
         }
     },
 
-    // Verify payment
-    verifyPayment: async (paymentData) => {
+    // Capture an approved PayPal order
+    captureOrder: async (orderId) => {
         try {
-            const response = await fetch(`${API_URL}/verify-payment`, {
+            const response = await fetch(`${API_URL}/capture-order`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(paymentData)
+                body: JSON.stringify({ orderId }),
             });
 
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.message || 'Payment verification failed');
+                throw new Error(data.message || 'Payment capture failed');
             }
 
             return data;
         } catch (error) {
-            console.error('Error verifying payment:', error);
+            console.error('Error capturing PayPal order:', error);
             throw error;
         }
     },

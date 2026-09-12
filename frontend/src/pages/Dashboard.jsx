@@ -164,11 +164,9 @@ export default function Dashboard() {
                         <h2 className="text-xl font-extrabold text-white">Dashboard</h2>
                         <p className="text-[rgba(255,255,255,0.3)] mt-0.5 text-[12px]">Crypto market overview & analysis</p>
                     </div>
-                    {user?.role === 'admin' && (
-                        <Link to="/payment" className="bg-accent hover:bg-sky-400 text-black text-sm px-5 py-2 rounded-lg font-bold transition-all flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] w-full sm:w-auto">
-                            <Wallet size={16} /> Add Funds (Admin)
-                        </Link>
-                    )}
+                    <Link to="/payment" className="bg-accent hover:bg-sky-400 text-black text-sm px-5 py-2 rounded-lg font-bold transition-all flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] w-full sm:w-auto">
+                        <Wallet size={16} /> Add Funds
+                    </Link>
                 </div>
 
                 {/* Stat Cards Grid - Responsive fix */}

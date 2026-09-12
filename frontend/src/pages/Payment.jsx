@@ -8,6 +8,10 @@ const Payment = () => {
     const location = useLocation();
     const [loading, setLoading] = useState(false);
     const [paymentStatus, setPaymentStatus] = useState(null); // 'success' or 'failed'
+    const [amount, setAmount] = useState(() => {
+        const navigationAmount = Number(location.state?.amount);
+        return Number.isFinite(navigationAmount) && navigationAmount > 0 ? navigationAmount : 10;
+    });
 
     // Get order details from navigation state
     const orderDetails = location.state || {
@@ -19,24 +23,32 @@ const Payment = () => {
     };
 
     useEffect(() => {
-        // Load Razorpay script
-        const script = document.createElement('script');
-        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-        script.async = true;
-        document.body.appendChild(script);
+        const paypalOrderId = new URLSearchParams(location.search).get('token');
+        const cancelled = new URLSearchParams(location.search).get('cancelled');
 
-        return () => {
-            document.body.removeChild(script);
-        };
-    }, []);
+        if (cancelled) {
+            setPaymentStatus('failed');
+            return;
+        }
+
+        if (!paypalOrderId) return;
+
+        setLoading(true);
+        paymentService.captureOrder(paypalOrderId)
+            .then((result) => {
+                setPaymentStatus(result.success ? 'success' : 'failed');
+            })
+            .catch(() => setPaymentStatus('failed'))
+            .finally(() => setLoading(false));
+    }, [location.search]);
 
     const handlePayment = async () => {
         setLoading(true);
         try {
             // Create order
             const orderData = {
-                amount: orderDetails.amount,
-                currency: 'INR',
+                amount,
+                currency: 'USD',
                 receipt: `receipt_${Date.now()}`,
                 notes: {
                     assetName: orderDetails.assetName,
@@ -46,58 +58,9 @@ const Payment = () => {
                 }
             };
 
-            const { order, key_id } = await paymentService.createOrder(orderData);
-
-            // Razorpay options
-            const options = {
-                key: key_id,
-                amount: order.amount,
-                currency: order.currency,
-                name: 'Kryonex Pro',
-                description: `${orderDetails.type === 'subscription' ? 'Pro Subscription' : `Purchase ${orderDetails.quantity} ${orderDetails.assetSymbol}`}`,
-                order_id: order.id,
-                handler: async function (response) {
-                    // Payment successful
-                    try {
-                        const verifyData = await paymentService.verifyPayment({
-                            razorpay_order_id: response.razorpay_order_id,
-                            razorpay_payment_id: response.razorpay_payment_id,
-                            razorpay_signature: response.razorpay_signature
-                        });
-
-                        if (verifyData.success) {
-                            setPaymentStatus('success');
-                            setTimeout(() => {
-                                navigate('/dashboard');
-                            }, 3000);
-                        }
-                    } catch (error) {
-                        setPaymentStatus('failed');
-                    }
-                },
-                prefill: {
-                    name: '',
-                    email: '',
-                    contact: ''
-                },
-                theme: {
-                    color: '#2962FF'
-                },
-                modal: {
-                    ondismiss: function () {
-                        setLoading(false);
-                    }
-                }
-            };
-
-            const rzp = new window.Razorpay(options);
-            rzp.on('payment.failed', function (response) {
-                setPaymentStatus('failed');
-                setLoading(false);
-            });
-
-            rzp.open();
-            setLoading(false);
+            const { approvalUrl } = await paymentService.createOrder(orderData);
+            if (!approvalUrl) throw new Error('PayPal approval URL was not returned');
+            window.location.assign(approvalUrl);
         } catch (error) {
             console.error('Payment error:', error);
             setPaymentStatus('failed');
@@ -193,10 +156,21 @@ const Payment = () => {
                                     <div className="flex justify-between items-center">
                                         <span className="text-lg font-bold text-gray-900">Total Amount</span>
                                         <span className="text-2xl font-bold text-[#2962FF]">
-                                            ₹{orderDetails.amount.toLocaleString('en-IN')}
+                                            ${amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                                         </span>
                                     </div>
                                 </div>
+                                <label className="block border-t border-gray-200 pt-4">
+                                    <span className="block text-sm font-medium text-gray-600 mb-2">Payment amount (USD)</span>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        step="0.01"
+                                        value={amount}
+                                        onChange={(event) => setAmount(Math.max(0, Number(event.target.value)))}
+                                        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none focus:border-[#2962FF]"
+                                    />
+                                </label>
                             </div>
                         </div>
 
@@ -239,7 +213,7 @@ const Payment = () => {
                         <div className="bg-gradient-to-br from-[#2962FF] to-[#1e4bd1] rounded-2xl p-8 text-white space-y-6">
                             <h2 className="text-2xl font-bold">Secure Payment</h2>
                             <p className="text-blue-100">
-                                Your payment is secured by Razorpay. We support all major payment methods in India.
+                                Your payment is secured by PayPal.
                             </p>
                             <button
                                 onClick={handlePayment}
@@ -259,7 +233,7 @@ const Payment = () => {
                         {/* Test Mode Info */}
                         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                             <p className="text-sm text-yellow-800">
-                                <strong>Test Mode:</strong> Use test UPI ID or test card numbers for testing.
+                                <strong>Sandbox Mode:</strong> Use a PayPal sandbox buyer account to test this payment.
                             </p>
                         </div>
                     </div>
