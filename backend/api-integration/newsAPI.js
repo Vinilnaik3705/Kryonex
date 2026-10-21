@@ -1,12 +1,17 @@
 const axios = require('axios');
 const Parser = require('rss-parser');
 const crypto = require('crypto');
+const cacheService = require('../services/cacheService');
 
 const parser = new Parser({
     customFields: {
         item: ['media:content', 'media:thumbnail']
     }
 });
+
+const FEED_TIMEOUT_MS = 3500;
+const NEWS_CACHE_TTL = 60;
+let activeNewsRequest = null;
 
 /**
  * Generate a consistent ID from article URL
@@ -30,14 +35,34 @@ const RSS_FEEDS = {
  * @param {number} limit - Number of articles to fetch
  */
 async function getFinancialNews(category = 'crypto', limit = 20) {
+    const safeLimit = Math.min(Math.max(Number.parseInt(limit, 10) || 20, 1), 30);
+    const cacheKey = `news:${category}:${safeLimit}`;
+    const cached = await cacheService.get(cacheKey);
+    if (cached) return cached;
+    if (activeNewsRequest) return activeNewsRequest;
+
+    activeNewsRequest = loadFinancialNews(category, safeLimit, cacheKey);
     try {
-        const feeds = RSS_FEEDS.crypto;
+        return await activeNewsRequest;
+    } finally {
+        activeNewsRequest = null;
+    }
+}
+
+async function loadFinancialNews(category, safeLimit, cacheKey) {
+    try {
+        const feeds = RSS_FEEDS[category] || RSS_FEEDS.crypto;
         const allArticles = [];
 
         // Fetch from multiple RSS feeds in parallel
         const feedPromises = feeds.map(async (feedUrl) => {
             try {
-                const feed = await parser.parseURL(feedUrl);
+                const response = await axios.get(feedUrl, {
+                    timeout: FEED_TIMEOUT_MS,
+                    responseType: 'text',
+                    headers: { Accept: 'application/rss+xml, application/xml, text/xml' }
+                });
+                const feed = await parser.parseString(response.data);
                 return feed.items.map(item => ({
                     id: generateArticleId(item.link || item.title),
                     title: item.title || 'Untitled',
@@ -56,8 +81,10 @@ async function getFinancialNews(category = 'crypto', limit = 20) {
             }
         });
 
-        const feedResults = await Promise.all(feedPromises);
-        feedResults.forEach(articles => allArticles.push(...articles));
+        const feedResults = await Promise.allSettled(feedPromises);
+        feedResults.forEach((result) => {
+            if (result.status === 'fulfilled') allArticles.push(...result.value);
+        });
 
         // Sort by publish date (newest first)
         allArticles.sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
@@ -65,12 +92,14 @@ async function getFinancialNews(category = 'crypto', limit = 20) {
         const cryptoArticles = allArticles.filter((article) => article.category === 'Crypto');
 
         // Return limited results
-        return {
+        const result = {
             success: true,
-            data: cryptoArticles.slice(0, limit),
+            data: cryptoArticles.slice(0, safeLimit),
             totalResults: cryptoArticles.length,
             source: 'RSS Feeds'
         };
+        await cacheService.set(cacheKey, result, NEWS_CACHE_TTL);
+        return result;
     } catch (error) {
         console.error('RSS Feed Error:', error.message);
         return getFallbackNews();

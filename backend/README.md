@@ -20,6 +20,8 @@ cp .env.example .env
 
 2. (Optional) Update `.env` with your preferences. The defaults work out of the box.
 
+For persistent signed-in trading state, set `MONGO_URI`. When MongoDB is unavailable, local development uses the ignored `SIMULATION_DATA_FILE` fallback (default: `backend/data/simulation-state.json`).
+
 ### Running the Server
 
 **Development mode** (with auto-reload):
@@ -33,6 +35,8 @@ npm start
 ```
 
 The server will start on **http://localhost:5000**
+
+The API root at `GET /api` returns the active API groups and `GET /health` can be used as a deployment smoke check.
 
 ## 📊 Data Sources
 

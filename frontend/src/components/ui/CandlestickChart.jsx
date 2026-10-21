@@ -52,14 +52,16 @@ const parseCryptoCandle = (item) => ({
 function merge15mTo45m(candles) {
     const merged = [];
 
-    for (let index = 0; index + 2 < candles.length; index += 3) {
+    for (let index = 0; index < candles.length; index += 3) {
+        const group = candles.slice(index, index + 3);
+        if (!group.length) continue;
         merged.push({
-            time: candles[index].time,
-            open: candles[index].open,
-            high: Math.max(candles[index].high, candles[index + 1].high, candles[index + 2].high),
-            low: Math.min(candles[index].low, candles[index + 1].low, candles[index + 2].low),
-            close: candles[index + 2].close,
-            volume: candles[index].volume + candles[index + 1].volume + candles[index + 2].volume,
+            time: group[0].time,
+            open: group[0].open,
+            high: Math.max(...group.map((candle) => candle.high)),
+            low: Math.min(...group.map((candle) => candle.low)),
+            close: group.at(-1).close,
+            volume: group.reduce((total, candle) => total + candle.volume, 0),
         });
     }
 
@@ -171,53 +173,59 @@ const tryBackendWebSocket = (topic, onLiveUpdate, onFallback) => {
     if (import.meta.env.VITE_WS_URL) {
         wsUrl = import.meta.env.VITE_WS_URL;
     }
-    
-    let hasFailed = false;
+
+    let stopped = false;
+    let fallbackStarted = false;
+    let ws = null;
+    let watchdog = null;
+    let lastLiveMessageAt = Date.now();
+
+    const startFallback = () => {
+        if (stopped || fallbackStarted) return;
+        fallbackStarted = true;
+        onFallback();
+    };
 
     try {
-        console.log(`Connecting to backend WebSocket Gateway: ${wsUrl}`);
-        const ws = new WebSocket(wsUrl);
-        
+        ws = new WebSocket(wsUrl);
         ws.onopen = () => {
-            if (hasFailed) return;
-            console.log(`✅ Connected to backend WS. Subscribing to: ${topic}`);
+            if (stopped) return;
+            lastLiveMessageAt = Date.now();
             ws.send(JSON.stringify({ action: 'subscribe', topic }));
         };
-
         ws.onmessage = (event) => {
-            if (hasFailed) return;
+            if (stopped) return;
             try {
                 const message = JSON.parse(event.data);
                 if (message.type === 'live' && message.topic === topic && message.data) {
+                    lastLiveMessageAt = Date.now();
                     onLiveUpdate(message.data);
                 }
-            } catch (e) {
-                console.error('Error parsing backend WS message:', e);
+            } catch (error) {
+                console.error('Error parsing backend WS message:', error);
             }
         };
+        ws.onerror = () => startFallback();
+        ws.onclose = () => startFallback();
 
-        ws.onerror = (err) => {
-            if (hasFailed) return;
-            console.warn('Backend WS error:', err);
-            hasFailed = true;
-            ws.close();
-            onFallback();
-        };
-
-        ws.onclose = () => {
-            if (hasFailed) return;
-            console.warn('Backend WS connection closed. Running fallback...');
-            hasFailed = true;
-            onFallback();
-        };
-
-        return ws;
-    } catch (err) {
-        console.warn('Failed to initialize backend WS connection:', err);
-        hasFailed = true;
-        onFallback();
-        return null;
+        watchdog = window.setInterval(() => {
+            if (!stopped && ws?.readyState === WebSocket.OPEN && Date.now() - lastLiveMessageAt > 12000) {
+                startFallback();
+                ws.close();
+            }
+        }, 5000);
+    } catch (error) {
+        console.warn('Failed to initialize backend WebSocket:', error);
+        startFallback();
     }
+
+    return {
+        close: () => {
+            stopped = true;
+            if (watchdog) window.clearInterval(watchdog);
+            ws?.close();
+        },
+    };
 };
 
 const CandlestickChart = ({
@@ -248,6 +256,7 @@ const CandlestickChart = ({
     const requestIdRef = useRef(0);
     const volumeScaleRef = useRef(1);
     const rawCryptoCandlesRef = useRef([]);
+    const realtimeCleanupRef = useRef(null);
     const [candles, setCandles] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [errorMessage, setErrorMessage] = useState('');
@@ -268,35 +277,35 @@ const CandlestickChart = ({
             width: initialWidth,
             height,
             layout: {
-                background: { color: '#0a0a0a' },
-                textColor: '#94a3b8',
+                background: { color: '#0a0b0d' },
+                textColor: '#a4abb7',
                 fontFamily: 'Inter, sans-serif',
             },
             grid: {
-                vertLines: { color: '#1a1a1a' },
-                horzLines: { color: '#1a1a1a' },
+                vertLines: { color: 'rgba(255,255,255,0.06)' },
+                horzLines: { color: 'rgba(255,255,255,0.06)' },
             },
             crosshair: {
                 mode: 1,
                 vertLine: {
-                    color: '#2a2a2a',
+                    color: '#7c5cff',
                     width: 1,
                     style: 3,
-                    labelBackgroundColor: '#26a69a',
+                    labelBackgroundColor: '#7c5cff',
                 },
                 horzLine: {
-                    color: '#2a2a2a',
+                    color: '#7c5cff',
                     width: 1,
                     style: 3,
-                    labelBackgroundColor: '#26a69a',
+                    labelBackgroundColor: '#7c5cff',
                 },
             },
             rightPriceScale: {
                 autoScale: true,
-                borderColor: '#1a1a1a',
+                borderColor: 'rgba(255,255,255,0.10)',
             },
             timeScale: {
-                borderColor: '#1a1a1a',
+                borderColor: 'rgba(255,255,255,0.10)',
                 timeVisible: true,
                 secondsVisible: false,
             },
@@ -388,10 +397,10 @@ const CandlestickChart = ({
 
     useEffect(() => {
         const cleanupRealtime = () => {
-            if (wsRef.current) {
-                wsRef.current.close();
-                wsRef.current = null;
-            }
+            realtimeCleanupRef.current?.();
+            realtimeCleanupRef.current = null;
+            if (wsRef.current?.close) wsRef.current.close();
+            wsRef.current = null;
         };
 
         const isStaleRequest = (requestId) => requestId !== requestIdRef.current;
@@ -450,67 +459,6 @@ const CandlestickChart = ({
                 setCandles(nextCandles);
                 onPriceUpdateRef.current?.(nextCandles.at(-1)?.close);
 
-                const streamInterval = timeframeConfig.streamInterval || timeframeConfig.interval;
-                const startCryptoLiveStream = () => {
-                    try {
-                        wsRef.current = new WebSocket(
-                            `wss://stream.binance.com:9443/ws/${cryptoSymbol.toLowerCase()}@kline_${streamInterval}`
-                        );
-
-                        wsRef.current.onmessage = (event) => {
-                            try {
-                                if (isStaleRequest(requestId)) return;
-
-                                const message = JSON.parse(event.data);
-                                const kline = message?.k;
-                                if (!kline) return;
-
-                                const liveCandle = {
-                                    time: Math.floor(Number(kline.t) / 1000),
-                                    open: parseNumber(kline.o),
-                                    high: parseNumber(kline.h),
-                                    low: parseNumber(kline.l),
-                                    close: parseNumber(kline.c),
-                                    volume: parseNumber(kline.v),
-                                };
-
-                                if (typeof timeframeConfig.transform === 'function') {
-                                    const nextRawCandles = upsertCandle(rawCryptoCandlesRef.current, liveCandle);
-                                    rawCryptoCandlesRef.current = nextRawCandles;
-                                    const nextCandles = timeframeConfig.transform(nextRawCandles);
-                                    volumeScaleRef.current = getVolumeScale(nextCandles);
-                                    setCandles(nextCandles);
-                                    onPriceUpdateRef.current?.(nextCandles.at(-1)?.close);
-                                } else {
-                                    candleSeriesRef.current?.update(liveCandle);
-                                    if (volumeSeriesRef.current) {
-                                        volumeSeriesRef.current.update({
-                                            time: liveCandle.time,
-                                            value: normalizeVolume(liveCandle.volume || 0, volumeScaleRef.current),
-                                            color: liveCandle.close >= liveCandle.open ? 'rgba(38, 166, 154, 0.35)' : 'rgba(239, 83, 80, 0.35)',
-                                        });
-                                    }
-                                    onPriceUpdateRef.current?.(liveCandle.close);
-
-                                    setCandles((previous) => {
-                                        if (isStaleRequest(requestId)) return previous;
-
-                                        return upsertCandle(previous, liveCandle);
-                                    });
-                                }
-                            } catch (error) {
-                                console.error('Binance websocket parse error:', error);
-                            }
-                        };
-
-                        wsRef.current.onerror = (error) => {
-                            console.error('Binance websocket error:', error);
-                        };
-                    } catch (err) {
-                        console.error('Binance websocket init error:', err);
-                    }
-                };
-
                 const handleLiveUpdate = (liveCandle) => {
                     if (isStaleRequest(requestId)) return;
                     if (typeof timeframeConfig.transform === 'function') {
@@ -518,6 +466,7 @@ const CandlestickChart = ({
                         rawCryptoCandlesRef.current = nextRawCandles;
                         const nextCandles = timeframeConfig.transform(nextRawCandles);
                         volumeScaleRef.current = getVolumeScale(nextCandles);
+                        historyCache.set(historyCacheKey, nextCandles);
                         setCandles(nextCandles);
                         onPriceUpdateRef.current?.(nextCandles.at(-1)?.close);
                     } else {
@@ -533,13 +482,56 @@ const CandlestickChart = ({
 
                         setCandles((previous) => {
                             if (isStaleRequest(requestId)) return previous;
-                            return upsertCandle(previous, liveCandle);
+                            const nextCandles = upsertCandle(previous, liveCandle);
+                            historyCache.set(historyCacheKey, nextCandles);
+                            return nextCandles;
                         });
                     }
                 };
 
+                const streamInterval = timeframeConfig.streamInterval || timeframeConfig.interval;
+                let directReconnectTimer = null;
+                let directReconnectAttempt = 0;
+                let directStreamStopped = false;
+                const startCryptoLiveStream = () => {
+                    if (directStreamStopped) return;
+                    try {
+                        const directSocket = new WebSocket(
+                            `wss://stream.binance.com:9443/ws/${cryptoSymbol.toLowerCase()}@kline_${streamInterval}`
+                        );
+                        wsRef.current = directSocket;
+                        directSocket.onopen = () => { directReconnectAttempt = 0; };
+                        directSocket.onmessage = (event) => {
+                            try {
+                                const message = JSON.parse(event.data);
+                                const kline = message?.k;
+                                if (!kline) return;
+                                handleLiveUpdate({
+                                    time: Math.floor(Number(kline.t) / 1000),
+                                    open: parseNumber(kline.o),
+                                    high: parseNumber(kline.h),
+                                    low: parseNumber(kline.l),
+                                    close: parseNumber(kline.c),
+                                    volume: parseNumber(kline.v),
+                                });
+                            } catch (error) {
+                                console.error('Binance websocket parse error:', error);
+                            }
+                        };
+                        directSocket.onerror = () => directSocket.close();
+                        directSocket.onclose = () => {
+                            if (directStreamStopped || isStaleRequest(requestId)) return;
+                            const delay = Math.min(1000 * (2 ** directReconnectAttempt), 10000);
+                            directReconnectAttempt += 1;
+                            directReconnectTimer = window.setTimeout(startCryptoLiveStream, delay);
+                        };
+                    } catch {
+                        directReconnectTimer = window.setTimeout(startCryptoLiveStream, 3000);
+                    }
+                };
+
                 // Try backend WS gateway first, fallback to direct Binance stream
-                wsRef.current = tryBackendWebSocket(
+                const backendSocket = tryBackendWebSocket(
                     `crypto:${cryptoSymbol}`,
                     handleLiveUpdate,
                     () => {
@@ -547,6 +539,39 @@ const CandlestickChart = ({
                         startCryptoLiveStream();
                     }
                 );
+                wsRef.current = backendSocket;
+
+                const pollCurrentPrice = async () => {
+                    if (isStaleRequest(requestId)) return;
+                    try {
+                        const response = await fetch(`${API_BASE_URL}/crypto/price/${encodeURIComponent(assetSymbol)}`, { cache: 'no-store' });
+                        if (!response.ok) return;
+                        const price = Number((await response.json())?.data?.price);
+                        if (!Number.isFinite(price)) return;
+                        const base = rawCryptoCandlesRef.current.at(-1) || nextCandles.at(-1);
+                        if (!base) return;
+                        handleLiveUpdate({
+                            ...base,
+                            close: price,
+                            high: Math.max(base.high, price),
+                            low: Math.min(base.low, price),
+                            time: base.time,
+                        });
+                    } catch {
+                        // The WebSocket remains the primary transport.
+                    }
+                };
+
+                const pricePollTimer = window.setInterval(pollCurrentPrice, 1000);
+                pollCurrentPrice();
+                realtimeCleanupRef.current = () => {
+                    directStreamStopped = true;
+                    if (directReconnectTimer) window.clearTimeout(directReconnectTimer);
+                    window.clearInterval(pricePollTimer);
+                    backendSocket?.close?.();
+                    wsRef.current?.close?.();
+                    wsRef.current = null;
+                };
             } catch (error) {
                 if (isStaleRequest(requestId)) return;
 
@@ -557,9 +582,7 @@ const CandlestickChart = ({
                 setCandles(fallbackCandles);
                 onPriceUpdate?.(fallbackCandles.at(-1)?.close);
             } finally {
-                if (isStaleRequest(requestId)) return;
-
-                setIsLoading(false);
+                if (!isStaleRequest(requestId)) setIsLoading(false);
             }
         };
 
@@ -612,20 +635,20 @@ const CandlestickChart = ({
 
     return (
         <div className="relative w-full" style={{ height: `${height}px` }}>
-            <div className="absolute left-4 top-4 z-20 flex items-center gap-2 rounded-full border border-white/10 bg-black/45 px-3 py-1.5 backdrop-blur-md">
-                <span className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
-                <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-300">
+            <div className="absolute left-4 top-4 z-20 flex items-center gap-2 rounded-full border border-border bg-card/80 px-3 py-1.5 backdrop-blur-md">
+                <span className="h-2 w-2 rounded-full bg-success animate-pulse" />
+                <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-text-muted">
                     Live
                 </span>
             </div>
             {isLoading && candles.length === 0 && (
-                <div className="absolute inset-0 flex items-center justify-center bg-[#0a0a0a]/80 z-10 backdrop-blur-sm rounded-xl border border-white/5">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
+                <div className="absolute inset-0 flex items-center justify-center bg-card/80 z-10 backdrop-blur-sm rounded-xl border border-border">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-500"></div>
                 </div>
             )}
             <div ref={chartContainerRef} className="w-full h-full rounded-xl overflow-hidden" />
             {!isLoading && errorMessage && candles.length === 0 && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/75 text-slate-300 text-sm rounded-xl border border-white/5 px-4 text-center">
+                <div className="absolute inset-0 flex items-center justify-center bg-card/75 text-text-muted text-sm rounded-xl border border-border px-4 text-center">
                     {errorMessage}
                 </div>
             )}

@@ -5,36 +5,16 @@ const ThemeContext = createContext();
 export const useTheme = () => useContext(ThemeContext);
 
 export const ThemeProvider = ({ children }) => {
-    // Initialize theme from localStorage or default to 'dark'
-    const [theme, setTheme] = useState(() => {
-        try {
-            const savedTheme = localStorage.getItem('theme');
-            return savedTheme || 'dark';
-        } catch {
-            return 'dark';
-        }
-    });
+    const [theme, setTheme] = useState('dark');
 
-    // Update HTML class and localStorage when theme changes
     useEffect(() => {
         const root = window.document.documentElement;
-
-        // Remove old theme class
-        root.classList.remove('light', 'dark');
-
-        // Add new theme class
-        root.classList.add(theme);
-
-        // Save to localStorage
-        try {
-            localStorage.setItem('theme', theme);
-        } catch (error) {
-            console.error('Failed to save theme:', error);
-        }
-    }, [theme]);
+        root.classList.remove('light');
+        root.classList.add('dark');
+    }, []);
 
     const toggleTheme = () => {
-        setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+        setTheme((current) => current === 'dark' ? 'light' : 'dark');
     };
 
     return (

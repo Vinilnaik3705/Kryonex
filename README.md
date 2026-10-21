@@ -62,6 +62,15 @@ Kryonex is a high-performance, real-time trading simulation platform designed to
 4.  **Launch**
     Navigate to `http://localhost:5173` to start trading.
 
+## 💾 Trading-state persistence
+
+- Signed-in wallet balances, holdings, and trade history sync through `/api/simulation/state`.
+- Configure `MONGO_URI` for durable multi-instance/production storage.
+- If MongoDB is unavailable locally, the backend uses the ignored file `backend/data/simulation-state.json` instead of an in-memory store, so trades survive a backend restart.
+- Set the frontend deployment variable `VITE_API_BASE_URL` to the backend origin, for example `https://your-backend.example.com` (do not include `/api`; the app adds it).
+
+The repository does not include `.env`, `node_modules`, build output, runtime logs, or local simulation data.
+
 ## 🤝 Contributing
 
 Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.

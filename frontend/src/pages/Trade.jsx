@@ -197,26 +197,26 @@ const AssetSearchModal = ({ isOpen, onClose, onSelect, currentAsset }) => {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="glass-card rounded-2xl w-full max-w-2xl max-h-[80vh] flex flex-col shadow-card-hover">
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-white/10">
-                    <h2 className="text-xl font-bold text-white">Search Assets</h2>
-                    <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
-                        <X size={20} className="text-slate-400" />
+                <div className="flex items-center justify-between p-6 border-b border-border">
+                    <h2 className="text-xl font-bold text-text-main">Search Assets</h2>
+                    <button onClick={onClose} className="p-2 hover:bg-hover rounded-lg transition-colors">
+                        <X size={20} className="text-text-dim" />
                     </button>
                 </div>
 
                 {/* Search Input */}
-                <div className="p-6 border-b border-white/10">
+                <div className="p-6 border-b border-border">
                     <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-dim" size={18} />
                         <input
                             type="text"
                             placeholder="Search by symbol or name..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full bg-slate-900/50 border border-white/10 rounded-lg pl-10 pr-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-accent"
+                            className="w-full bg-hover border border-border rounded-lg pl-10 pr-4 py-3 text-text-main placeholder-text-dim focus:outline-none focus:border-accent"
                             autoFocus
                         />
                     </div>
@@ -229,7 +229,7 @@ const AssetSearchModal = ({ isOpen, onClose, onSelect, currentAsset }) => {
                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
                         </div>
                     ) : filteredAssets.length === 0 ? (
-                        <div className="text-center py-12 text-slate-500">
+                        <div className="text-center py-12 text-text-dim">
                             No assets found
                         </div>
                     ) : (
@@ -240,19 +240,19 @@ const AssetSearchModal = ({ isOpen, onClose, onSelect, currentAsset }) => {
                                     onClick={() => onSelect(asset)}
                                     className={`w-full flex items-center justify-between p-4 rounded-lg transition-all ${asset.symbol === currentAsset
                                         ? 'bg-accent/20 border-2 border-accent'
-                                        : 'bg-slate-900/30 border border-white/5 hover:bg-slate-800/50'
+                                        : 'bg-hover border border-border hover:border-brand-200'
                                         }`}
                                 >
                                     <div className="flex items-center gap-3">
                                         <CoinIcon symbol={asset.symbol} size={32} />
                                         <div className="text-left">
-                                            <div className="font-bold text-white">{asset.symbol}</div>
-                                            <div className="text-xs text-slate-500">{asset.name}</div>
+                                            <div className="font-bold text-text-main">{asset.symbol}</div>
+                                            <div className="text-xs text-text-dim">{asset.name}</div>
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        <div className="font-bold text-white">{formatPrice(asset.price)}</div>
-                                        <div className="text-xs text-slate-500 capitalize">{asset.type}</div>
+                                        <div className="font-bold text-text-main">{formatPrice(asset.price)}</div>
+                                        <div className="text-xs text-text-dim capitalize">{asset.type}</div>
                                     </div>
                                 </button>
                             ))}
@@ -277,33 +277,33 @@ const ChartInstance = ({ config, onUpdate, isSingle, onPriceUpdate }) => {
     };
 
     return (
-        <div className={`relative bg-secondary/30 rounded-2xl border border-slate-700/50 flex overflow-hidden ${isSingle ? 'h-[600px]' : 'h-full'}`}>
+        <div className={`relative bg-card rounded-2xl border border-border flex overflow-hidden ${isSingle ? 'h-[600px]' : 'h-full'}`}>
             <div className="flex-1 flex flex-col p-4">
                 {/* Chart Header */}
                 <div className="flex justify-between items-center mb-4">
                     <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2">
-                            <div className="font-bold text-xl text-white">
+                            <div className="font-bold text-xl text-text-main">
                                 {getAssetDisplayName(config.assetId)}
                             </div>
                             <button
                                 onClick={() => setShowSearch(true)}
-                                className="p-1.5 bg-slate-800/50 rounded-lg hover:bg-slate-700 transition-colors border border-white/10"
+                                className="p-1.5 bg-hover rounded-lg hover:bg-secondary transition-colors border border-border"
                                 title="Search Assets"
                             >
-                                <Search size={16} className="text-slate-400" />
+                                <Search size={16} className="text-text-dim" />
                             </button>
                         </div>
                         <div className="relative">
                             <button
                                 onClick={() => setShowTimeframeMenu((prev) => !prev)}
-                                className="inline-flex items-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.05] px-3 py-2 text-xs font-bold text-white transition-colors hover:border-sky-400/40"
+                                className="inline-flex items-center gap-2 rounded-xl border border-border bg-hover px-3 py-2 text-xs font-bold text-text-main transition-colors hover:border-brand-300"
                             >
                                 <span>{selectedTimeframe.label}</span>
-                                <ChevronDown size={14} className="text-sky-300" />
+                                <ChevronDown size={14} className="text-brand-500" />
                             </button>
                             {showTimeframeMenu && (
-                                <div className="absolute left-0 top-full z-20 mt-2 w-40 overflow-hidden rounded-2xl border border-white/[0.1] bg-[#0A0A0A] shadow-2xl shadow-black/40">
+                                <div className="absolute left-0 top-full z-20 mt-2 w-40 overflow-hidden rounded-2xl border border-border bg-card shadow-card-hover">
                                     {TIMEFRAMES.map((item) => {
                                         const active = config.timeframe === item.value;
                                         return (
@@ -313,7 +313,7 @@ const ChartInstance = ({ config, onUpdate, isSingle, onPriceUpdate }) => {
                                                     onUpdate({ ...config, timeframe: item.value });
                                                     setShowTimeframeMenu(false);
                                                 }}
-                                                className={`flex w-full items-center justify-between px-4 py-3 text-left text-sm transition-colors ${active ? 'bg-sky-400/15 text-sky-300' : 'text-slate-300 hover:bg-white/[0.04] hover:text-white'}`}
+                                                className={`flex w-full items-center justify-between px-4 py-3 text-left text-sm transition-colors ${active ? 'bg-brand-50 text-brand-700' : 'text-text-muted hover:bg-hover hover:text-text-main'}`}
                                             >
                                                 <span>{item.label}</span>
                                                 {active && <Check size={14} />}
@@ -327,15 +327,15 @@ const ChartInstance = ({ config, onUpdate, isSingle, onPriceUpdate }) => {
 
                     <div className="flex gap-2">
                         <div className="relative group/ind">
-                            <button className="p-1.5 bg-slate-800 rounded-lg text-slate-300 hover:text-white border border-white/5">
+                            <button className="p-1.5 bg-hover rounded-lg text-text-muted hover:text-text-main border border-border">
                                 <Activity size={14} />
                             </button>
-                            <div className="absolute right-0 top-full mt-2 w-32 bg-[#0A0A0A] border border-white/10 rounded-xl p-2 z-10 hidden group-hover/ind:block shadow-xl">
+                            <div className="absolute right-0 top-full mt-2 w-32 bg-card border border-border rounded-xl p-2 z-10 hidden group-hover/ind:block shadow-card-hover">
                                 {['sma', 'ema'].map(ind => (
                                     <button
                                         key={ind}
                                         onClick={() => toggleIndicator(ind)}
-                                        className={`w-full text-left px-3 py-2 text-xs font-bold rounded-lg hover:bg-white/5 ${config.indicators[ind] ? 'text-accent' : 'text-slate-500'}`}
+                                        className={`w-full text-left px-3 py-2 text-xs font-bold rounded-lg hover:bg-hover ${config.indicators[ind] ? 'text-brand-600' : 'text-text-dim'}`}
                                     >
                                         {ind.toUpperCase()}
                                     </button>
@@ -586,31 +586,31 @@ export default function Trade() {
                 {/* Header Controls */}
                 <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                     <div className="flex items-center gap-4">
-                        <Link to="/markets" className="p-2 bg-white/5 border border-white/5 rounded-xl text-slate-400 hover:text-white transition-colors">
+                        <Link to="/markets" className="p-2 bg-hover border border-border rounded-xl text-text-dim hover:text-text-main transition-colors">
                             <ArrowLeft size={18} />
                         </Link>
                         <h1 className="text-2xl font-bold">Trading Terminal</h1>
                     </div>
 
-                    <div className="flex items-center gap-2 bg-slate-900/50 p-1.5 rounded-xl border border-white/5">
+                    <div className="flex items-center gap-2 bg-secondary/50 p-1.5 rounded-xl border border-border">
                         {['single', 'split-v', 'quad'].map(l => (
                             <button
                                 key={l}
                                 onClick={() => handleLayoutChange(l)}
-                                className={`p-2 rounded-lg transition-all ${layout === l ? 'bg-accent text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}
+                                className={`p-2 rounded-lg transition-all ${layout === l ? 'bg-brand-gradient text-white shadow-lg' : 'text-text-dim hover:text-text-main'}`}
                             >
                                 {l === 'single' && <Maximize2 size={18} />}
                                 {l === 'split-v' && <Columns size={18} />}
                                 {l === 'quad' && <Grid2X2 size={18} />}
                             </button>
                         ))}
-                        <div className="w-[1px] h-6 bg-white/10 mx-1" />
+                        <div className="w-[1px] h-6 bg-border mx-1" />
                         <button
                             onClick={() => {
                                 localStorage.removeItem(chartLayoutStorageKey);
                                 window.location.reload();
                             }}
-                            className="p-2 text-slate-500 hover:text-danger rounded-lg transition-all"
+                            className="p-2 text-text-dim hover:text-danger rounded-lg transition-all"
                             title="Reset Layout"
                         >
                             <Trash2 size={18} />

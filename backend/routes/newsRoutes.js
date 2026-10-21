@@ -10,15 +10,17 @@ const newsAPI = require('../api-integration/newsAPI');
  */
 router.get('/', async (req, res) => {
     try {
-        const { limit = 20 } = req.query;
-        const news = await newsAPI.getFinancialNews('crypto', parseInt(limit));
+        const requestedLimit = Number.parseInt(req.query.limit, 10);
+        const limit = Number.isFinite(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), 30) : 20;
+        const news = await newsAPI.getFinancialNews('crypto', limit);
+        res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=90');
         res.json(news);
     } catch (error) {
         console.error('News route error:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to fetch news',
-            message: error.message
+            message: 'News service temporarily unavailable'
         });
     }
 });

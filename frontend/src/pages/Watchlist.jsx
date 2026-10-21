@@ -92,17 +92,17 @@ export default function Watchlist() {
             <div className="space-y-5">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                     <div>
-                        <h2 className="text-xl font-extrabold text-white">My Watchlist</h2>
-                        <p className="text-[rgba(255,255,255,0.3)] mt-0.5 text-[12px]">Track your favorite assets</p>
+                        <h2 className="text-xl font-extrabold text-text-main">My Watchlist</h2>
+                        <p className="text-text-dim mt-0.5 text-[12px]">Track your favorite assets</p>
                     </div>
 
                     <div className="flex items-center gap-2 w-full md:w-auto">
                         <div className="relative flex-1 md:w-56 group max-w-md">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[rgba(255,255,255,0.25)] group-focus-within:text-accent transition-colors" size={16} />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-dim group-focus-within:text-brand-600 transition-colors" size={16} />
                             <input
                                 type="text"
                                 placeholder="Search watchlist..."
-                                className="w-full bg-white/[0.04] border border-[rgba(255,255,255,0.06)] rounded-lg pl-9 pr-4 py-2 text-white text-[13px] focus:outline-none focus:border-accent/40 transition-all placeholder:text-[rgba(255,255,255,0.25)]"
+                                className="w-full bg-hover border border-border rounded-lg pl-9 pr-4 py-2 text-text-main text-[13px] focus:outline-none focus:border-brand-500/40 transition-all placeholder:text-text-dim"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
@@ -114,7 +114,7 @@ export default function Watchlist() {
                     <div className="hidden sm:block overflow-x-auto min-h-[400px]">
                         <table className="w-full">
                             <thead>
-                                <tr className="border-b border-[rgba(255,255,255,0.06)]">
+                                <tr className="border-b border-border">
                                     <th className="w-8 text-center py-3"></th>
                                     <th className="text-left py-3 px-3 sm:px-5 th-label">Asset</th>
                                     <th className="text-right py-3 px-3 sm:px-5 th-label">Price</th>
@@ -129,7 +129,7 @@ export default function Watchlist() {
                                     <tr
                                         key={asset.id}
                                         onClick={() => setSelectedAsset(asset)}
-                                        className="hover:bg-[rgba(56,189,248,0.04)] transition-colors group cursor-pointer border-b border-[rgba(255,255,255,0.04)]"
+                                        className="hover:bg-hover transition-colors group cursor-pointer border-b border-border"
                                     >
                                         <td className="text-center py-3 px-2">
                                             <button
@@ -146,13 +146,13 @@ export default function Watchlist() {
                                             <div className="flex items-center gap-2.5">
                                                 <CoinIcon symbol={asset.symbol} size={28} />
                                                 <div className="min-w-0">
-                                                    <p className="font-bold text-[13px] text-white truncate max-w-[80px] sm:max-w-none">{asset.name}</p>
-                                                    <span className="text-[10px] text-[rgba(255,255,255,0.25)] uppercase tracking-wider">{asset.symbol}</span>
+                                                    <p className="font-bold text-[13px] text-text-main truncate max-w-[80px] sm:max-w-none">{asset.name}</p>
+                                                    <span className="text-[10px] text-text-dim uppercase tracking-wider">{asset.symbol}</span>
                                                 </div>
                                             </div>
                                         </td>
                                         <td className="text-right py-3 px-3 sm:px-5">
-                                            <span className="font-mono price-mono font-bold text-white">
+                                            <span className="font-mono price-mono font-bold text-text-main">
                                                 {formatAmount(convert(asset.price), currency)}
                                             </span>
                                         </td>
@@ -162,10 +162,10 @@ export default function Watchlist() {
                                                 {Math.abs(asset.change).toFixed(2)}%
                                             </div>
                                         </td>
-                                        <td className="text-right py-3 px-5 text-[rgba(255,255,255,0.4)] font-mono price-mono text-[12px] hidden lg:table-cell">
+                                        <td className="text-right py-3 px-5 text-text-dim font-mono price-mono text-[12px] hidden lg:table-cell">
                                             {asset.marketCap && asset.marketCap !== 'N/A' ? formatAmount(convert(Number(asset.marketCap)), currency) : 'N/A'}
                                         </td>
-                                        <td className="text-right py-3 px-5 text-[rgba(255,255,255,0.4)] font-mono price-mono text-[12px] hidden xl:table-cell">
+                                        <td className="text-right py-3 px-5 text-text-dim font-mono price-mono text-[12px] hidden xl:table-cell">
                                             {asset.volume && asset.volume !== 'N/A' ? formatAmount(convert(Number(asset.volume)), currency) : 'N/A'}
                                         </td>
                                         <td className="text-right py-3 px-3 sm:px-5 hidden sm:table-cell">
@@ -174,7 +174,7 @@ export default function Watchlist() {
                                                     e.stopPropagation();
                                                     setSelectedAsset(asset);
                                                 }}
-                                                className="bg-accent/[0.1] hover:bg-accent/[0.2] text-accent border border-accent/[0.25] px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all"
+                                                className="bg-brand-600/[0.1] hover:bg-brand-600/[0.2] text-brand-600 border border-brand-500/[0.25] px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all"
                                             >
                                                 Trade <ArrowUpRight size={12} className="ml-0.5 inline" />
                                             </button>
@@ -189,7 +189,7 @@ export default function Watchlist() {
                             <div
                                 key={asset.id}
                                 onClick={() => setSelectedAsset(asset)}
-                                className="rounded-2xl border border-[rgba(255,255,255,0.06)] bg-white/[0.03] p-4 shadow-[0_0_0_1px_rgba(255,255,255,0.02)] active:bg-[rgba(56,189,248,0.05)] transition-colors"
+                                className="rounded-2xl border border-border bg-hover p-4 active:bg-secondary transition-colors"
                             >
                                 <div className="flex items-start gap-3">
                                     <button
@@ -207,15 +207,15 @@ export default function Watchlist() {
                                         <div className="flex items-center gap-2.5">
                                             <CoinIcon symbol={asset.symbol} size={30} />
                                             <div className="min-w-0 flex-1">
-                                                <p className="font-bold text-[14px] text-white truncate">{asset.name}</p>
-                                                <span className="text-[10px] text-[rgba(255,255,255,0.25)] uppercase tracking-wider">{asset.symbol}</span>
+                                                <p className="font-bold text-[14px] text-text-main truncate">{asset.name}</p>
+                                                <span className="text-[10px] text-text-dim uppercase tracking-wider">{asset.symbol}</span>
                                             </div>
                                         </div>
 
                                         <div className="mt-3 flex items-end justify-between gap-3">
                                             <div>
-                                                <p className="text-[10px] font-bold uppercase tracking-widest text-[rgba(255,255,255,0.35)]">Price</p>
-                                                <p className="mt-1 font-mono price-mono text-[17px] font-bold text-white">
+                                                <p className="text-[10px] font-bold uppercase tracking-widest text-text-dim">Price</p>
+                                                <p className="mt-1 font-mono price-mono text-[17px] font-bold text-text-main">
                                                     {formatAmount(convert(asset.price), currency)}
                                                 </p>
                                             </div>
@@ -232,11 +232,11 @@ export default function Watchlist() {
                                                     e.stopPropagation();
                                                     setSelectedAsset(asset);
                                                 }}
-                                                className="inline-flex items-center gap-1.5 rounded-lg border border-accent/[0.25] bg-accent/[0.12] px-3 py-2 text-[11px] font-bold text-accent"
+                                                className="inline-flex items-center gap-1.5 rounded-lg border border-brand-500/[0.25] bg-brand-600/[0.12] px-3 py-2 text-[11px] font-bold text-brand-600"
                                             >
                                                 Trade <ArrowUpRight size={12} />
                                             </button>
-                                            <span className="text-[10px] text-[rgba(255,255,255,0.25)]">Tap card for details</span>
+                                            <span className="text-[10px] text-text-dim">Tap card for details</span>
                                         </div>
                                     </div>
                                 </div>
@@ -249,7 +249,7 @@ export default function Watchlist() {
                                 title="Your watchlist is empty"
                                 description="Star assets in the Markets page to see them here"
                                 action={
-                                    <Link to="/markets" className="text-accent underline hover:text-white">
+                                    <Link to="/markets" className="text-brand-600 underline hover:text-text-main">
                                         Go to Markets
                                     </Link>
                                 }
@@ -263,7 +263,7 @@ export default function Watchlist() {
                             title="Your watchlist is empty"
                             description="Star assets in the Markets page to see them here"
                             action={
-                                <Link to="/markets" className="text-accent underline hover:text-white">
+                                <Link to="/markets" className="text-brand-600 underline hover:text-text-main">
                                     Go to Markets
                                 </Link>
                             }

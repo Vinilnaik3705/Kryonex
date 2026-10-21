@@ -4,6 +4,7 @@ const https = require('https');
 
 let jwksCache = null;
 let jwksLastFetched = 0;
+let jwksRequest = null;
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
 const fetchJwks = async (supabaseUrl) => {
@@ -12,12 +13,26 @@ const fetchJwks = async (supabaseUrl) => {
         return jwksCache;
     }
     
-    return new Promise((resolve, reject) => {
+    if (jwksRequest) return jwksRequest;
+    jwksRequest = new Promise((resolve, reject) => {
         const cleanUrl = supabaseUrl.replace(/\/$/, '');
         const jwksUrl = `${cleanUrl}/auth/v1/.well-known/jwks.json`;
-        https.get(jwksUrl, (res) => {
+        const request = https.get(jwksUrl, (res) => {
+            if (res.statusCode < 200 || res.statusCode >= 300) {
+                res.resume();
+                reject(new Error(`JWKS request failed with status ${res.statusCode}`));
+                return;
+            }
             let data = '';
-            res.on('data', chunk => data += chunk);
+            let size = 0;
+            res.on('data', chunk => {
+                size += chunk.length;
+                if (size > 256 * 1024) {
+                    request.destroy(new Error('JWKS response too large'));
+                    return;
+                }
+                data += chunk;
+            });
             res.on('end', () => {
                 try {
                     const parsed = JSON.parse(data);
@@ -35,7 +50,9 @@ const fetchJwks = async (supabaseUrl) => {
         }).on('error', (err) => {
             reject(err);
         });
-    });
+        request.setTimeout(3000, () => request.destroy(new Error('JWKS request timed out')));
+    }).finally(() => { jwksRequest = null; });
+    return jwksRequest;
 };
 
 // Middleware to require authenticated user
@@ -49,6 +66,10 @@ const protect = async (req, res, next) => {
     const token = authHeader.split(' ')[1];
 
     try {
+        const supabaseUrl = process.env.SUPABASE_URL;
+        if (!supabaseUrl) throw new Error('SUPABASE_URL is not configured');
+        const issuer = `${supabaseUrl.replace(/\/$/, '')}/auth/v1`;
+
         // Extract JWT header to find alg and kid
         const parts = token.split('.');
         if (parts.length !== 3) {
@@ -73,10 +94,13 @@ const protect = async (req, res, next) => {
                 throw new Error('SUPABASE_JWT_SECRET is not configured');
             }
             const secret = Buffer.from(process.env.SUPABASE_JWT_SECRET, 'base64');
-            decoded = jwt.verify(token, secret, { algorithms: ['HS256'] });
+            decoded = jwt.verify(token, secret, {
+                algorithms: ['HS256'],
+                issuer,
+                audience: process.env.SUPABASE_JWT_AUDIENCE || 'authenticated'
+            });
         } else if (alg === 'ES256') {
             console.log('Verifying ES256 token using Supabase JWKS...');
-            const supabaseUrl = process.env.SUPABASE_URL || 'https://aqccvnwezampcmvtysqz.supabase.co';
             const keys = await fetchJwks(supabaseUrl);
             
             // Find key matching kid
@@ -91,15 +115,21 @@ const protect = async (req, res, next) => {
                 key: key
             });
 
-            decoded = jwt.verify(token, publicKey, { algorithms: ['ES256'] });
+            decoded = jwt.verify(token, publicKey, {
+                algorithms: ['ES256'],
+                issuer,
+                audience: process.env.SUPABASE_JWT_AUDIENCE || 'authenticated'
+            });
         } else {
             throw new Error(`Unsupported JWT algorithm: ${alg}`);
         }
         
         // Map decoded sub (user ID) to req.auth.userId for project compatibility
+        if (!decoded.sub || !decoded.exp) throw new Error('Token is missing required claims');
         req.auth = {
             userId: decoded.sub,
-            email: decoded.email
+            email: decoded.email,
+            role: decoded.role || decoded.user_role || decoded.user_metadata?.role
         };
         
         next();
@@ -111,11 +141,10 @@ const protect = async (req, res, next) => {
 
 // Admin middleware - checks if user has admin role
 const admin = (req, res, next) => {
-    if (!req.auth?.userId) {
+    if (!req.auth?.userId || !['admin'].includes(req.auth.role)) {
         return res.status(401).json({ success: false, error: 'Not authorized, no user' });
     }
     next();
 };
 
 module.exports = { protect, admin };
-

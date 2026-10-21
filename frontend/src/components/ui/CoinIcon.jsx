@@ -18,6 +18,7 @@ export default function CoinIcon({ symbol, size = 32 }) {
   const radius = Math.round(size * 0.28);
 
   const geckoUrl = logos[clean]; // from CoinGecko via your backend
+  const fallbackBg = COIN_COLORS[clean] || '#6366F1';
   const jsdelivrUrl = `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color/${clean?.toLowerCase()}.png`;
   const coincapUrl = `https://assets.coincap.io/assets/icons/${clean?.toLowerCase()}@2x.png`;
 
@@ -44,10 +45,12 @@ export default function CoinIcon({ symbol, size = 32 }) {
     return (
       <div style={{
         width: size, height: size, borderRadius: radius,
-        background: bg, display: 'flex', alignItems: 'center',
-        justifyContent: 'center', fontSize: size * 0.34,
+        background: `linear-gradient(135deg, ${bg}, ${bg}cc)`,
+        display: 'flex', alignItems: 'center',
+        justifyContent: 'center', fontSize: size * 0.36,
         fontWeight: 800, color: '#fff', flexShrink: 0,
-        fontFamily: 'Syne, sans-serif', letterSpacing: '-0.02em',
+        fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.02em',
+        boxShadow: '0 2px 8px rgba(10,10,15,0.08)',
       }}>
         {clean?.[0]}
       </div>
@@ -62,9 +65,9 @@ export default function CoinIcon({ symbol, size = 32 }) {
       style={{
         width: size, height: size, borderRadius: radius,
         objectFit: 'contain', flexShrink: 0,
-        background: 'rgba(255,255,255,0.04)',
+        background: 'var(--color-hover)',
         padding: size * 0.06,
       }}
     />
-  );
+  )
 }

@@ -8,7 +8,7 @@ const errorHandler = (err, req, res, next) => {
 
     // Default error status and message
     let statusCode = err.statusCode || 500;
-    let message = err.message || 'Internal Server Error';
+    let message = statusCode >= 500 ? 'Internal Server Error' : (err.message || 'Request failed');
 
     // Handle specific error types
     if (err.name === 'ValidationError') {
@@ -23,8 +23,8 @@ const errorHandler = (err, req, res, next) => {
 
     // API-specific errors
     if (err.isAxiosError) {
-        statusCode = err.response?.status || 502;
-        message = `External API Error: ${err.response?.data?.message || err.message}`;
+        statusCode = 502;
+        message = 'Upstream service unavailable';
     }
 
     // Send error response

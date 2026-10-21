@@ -10,7 +10,6 @@ import Portfolio from './pages/Portfolio';
 import Watchlist from './pages/Watchlist';
 import Settings from './pages/Settings';
 import Heatmap from './pages/Heatmap';
-import Payment from './pages/Payment';
 import NewsDetail from './pages/NewsDetail';import Documentation from './pages/Documentation';
 import Features from './pages/Features';
 import Updates from './pages/Updates';
@@ -44,7 +43,7 @@ const AuthenticatedRedirect = ({ children }) => {
   if (!isLoaded) {
     return (
       <div className="min-h-screen bg-primary flex items-center justify-center">
-        <Loader className="animate-spin text-accent" size={40} />
+        <Loader className="animate-spin text-accent" size={40} style={{ color: '#6366F1' }} />
       </div>
     );
   }
@@ -66,7 +65,7 @@ function App() {
               <CurrencyProvider>
                 <Router>
                   <ScrollToTop />
-                  <div className="min-h-screen bg-primary text-white font-sans antialiased selection:bg-accent selection:text-white transition-colors duration-300">
+                  <div className="min-h-screen bg-primary text-text-main font-sans antialiased selection:bg-brand-500/20 transition-colors duration-300">
                     <AuthenticatedRedirect>
                       <Routes>
                         <Route path="/" element={<Landing />} />
@@ -110,12 +109,6 @@ function App() {
                           </ProtectedRoute>
                         } />
 
-                      {/* Payment Route (not in navigation) */}
-                        <Route path="/payment" element={
-                          <ProtectedRoute>
-                            <Payment />
-                          </ProtectedRoute>
-                        } />
                         <Route path="/news/:id" element={
                           <ProtectedRoute>
                             <NewsDetail />

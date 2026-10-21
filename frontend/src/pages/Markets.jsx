@@ -8,7 +8,6 @@ import FilterPanel from '../components/ui/FilterPanel';
 import { useMarket } from '../context/MarketContext';
 import EmptyState from '../components/ui/EmptyState';
 import { TableSkeleton } from '../components/ui/LoadingState';
-import { formatPrice } from '../utils/formatPrice';
 import API_BASE_URL from '../config/api';
 import { useCurrency } from '../context/CurrencyContext';
 import { formatAmount } from '../utils/formatCurrency';
@@ -53,7 +52,9 @@ export default function Markets() {
             }
             return [];
         },
-        refetchInterval: 5000, // automatic background refresh every 5 seconds
+        staleTime: 15000,
+        gcTime: 60000,
+        refetchInterval: 15000,
     });
 
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -103,25 +104,25 @@ export default function Markets() {
             <div className="space-y-5">
                 <div className="flex flex-col gap-4">
                     <div>
-                        <h2 className="text-xl font-extrabold text-white">Crypto Market</h2>
-                        <p className="text-[rgba(255,255,255,0.3)] mt-0.5 text-[12px]">Real-time prices and analysis for top cryptocurrencies</p>
+                        <h2 className="text-xl font-extrabold text-text-main">Crypto Market</h2>
+                        <p className="text-text-dim mt-0.5 text-[12px]">Real-time prices and analysis for top cryptocurrencies</p>
                     </div>
 
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                         <div className="flex gap-2 flex-1 relative">
                             <div className="relative flex-1 group">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[rgba(255,255,255,0.25)] group-focus-within:text-accent transition-colors" size={16} />
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-dim group-focus-within:text-brand-600 transition-colors" size={16} />
                                 <input
                                     type="text"
                                     placeholder="Search Crypto..."
-                                    className="w-full bg-white/[0.04] border border-[rgba(255,255,255,0.06)] rounded-lg pl-9 pr-4 py-2 text-white text-[13px] focus:outline-none focus:border-accent/40 transition-all placeholder:text-[rgba(255,255,255,0.25)]"
+                                    className="w-full bg-white border border-border rounded-lg pl-9 pr-4 py-2 text-black text-[13px] focus:outline-none focus:border-brand-500/60 transition-all placeholder:text-slate-500"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                 />
                             </div>
                             <button
                                 onClick={() => setIsFilterOpen(!isFilterOpen)}
-                                className={`bg-white/[0.04] border p-2 rounded-lg transition-all ${isFilterOpen ? 'border-accent/40 text-accent' : 'border-[rgba(255,255,255,0.06)] text-[rgba(255,255,255,0.3)] hover:text-white hover:border-[rgba(255,255,255,0.12)]'}`}
+                                className={`bg-hover border p-2 rounded-lg transition-all ${isFilterOpen ? 'border-brand-500/40 text-brand-600' : 'border-border text-text-dim hover:text-text-main hover:border-border'}`}
                             >
                                 <Filter size={16} />
                             </button>
@@ -144,23 +145,23 @@ export default function Markets() {
                             {isMobile ? (
                                 <div className="w-full overflow-hidden">
                                     {/* Mobile Header */}
-                                    <div className="grid grid-cols-[1fr_auto_auto] gap-4 px-4 py-3 border-b border-white/[0.06] th-label uppercase">
+                                    <div className="grid grid-cols-[1fr_auto_auto] gap-4 px-4 py-3 border-b border-border th-label uppercase">
                                         <span>Asset</span>
                                         <span className="text-right">Price</span>
                                         <span className="text-right min-w-[60px]">Change</span>
                                     </div>
-                                    <div className="divide-y divide-white/[0.04]">
+                                    <div className="divide-y divide-border">
                                         {filteredData.map((asset) => (
                                             <div
                                                 key={asset.id}
                                                 onClick={() => setSelectedAsset(asset)}
-                                                className="grid grid-cols-[1fr_auto_auto] gap-4 px-4 py-4 items-center hover:bg-white/[0.02] cursor-pointer"
+                                                className="grid grid-cols-[1fr_auto_auto] gap-4 px-4 py-4 items-center hover:bg-hover cursor-pointer"
                                             >
                                                 <div className="flex items-center gap-3 min-w-0">
                                                     <CoinIcon symbol={asset.symbol} size={32} />
                                                     <div className="min-w-0">
-                                                        <div className="font-bold text-sm text-white truncate">{asset.symbol}</div>
-                                                        <div className="text-[10px] text-slate-500 uppercase tracking-widest truncate">{asset.name}</div>
+                                                        <div className="font-bold text-sm text-text-main truncate">{asset.symbol}</div>
+                                                        <div className="text-[10px] text-text-dim uppercase tracking-widest truncate">{asset.name}</div>
                                                     </div>
                                                 </div>
                                                 <div className="text-right font-mono price-mono font-bold text-xs">
@@ -178,7 +179,7 @@ export default function Markets() {
                                     <div className="inline-block min-w-full align-middle">
                                         <table className="w-full">
                                             <thead>
-                                                <tr className="border-b border-[rgba(255,255,255,0.06)]">
+                                                <tr className="border-b border-border">
                                                     <th className="w-8 text-center py-3"></th>
                                                     <th className="text-left py-3 px-3 sm:px-5 th-label">Asset</th>
                                                     <th className="text-right py-3 px-3 sm:px-5 th-label">Price</th>
@@ -193,7 +194,7 @@ export default function Markets() {
                                                     <tr
                                                         key={asset.id}
                                                         onClick={() => setSelectedAsset(asset)}
-                                                        className="hover:bg-[rgba(56,189,248,0.04)] transition-colors group cursor-pointer border-b border-[rgba(255,255,255,0.04)]"
+                                                        className="hover:bg-hover transition-colors group cursor-pointer border-b border-border"
                                                     >
                                                         <td className="text-center py-3 px-2">
                                                             <button
@@ -201,7 +202,7 @@ export default function Markets() {
                                                                     e.stopPropagation();
                                                                     toggleWatchlist(asset.id);
                                                                 }}
-                                                                className={`transition-all hover:scale-110 ${isInWatchlist(asset.id) ? 'text-yellow-400 fill-yellow-400' : 'text-[rgba(255,255,255,0.15)] hover:text-yellow-400'}`}
+                                                                className={`transition-all hover:scale-110 ${isInWatchlist(asset.id) ? 'text-yellow-400 fill-yellow-400' : 'text-text-dim hover:text-yellow-400'}`}
                                                             >
                                                                 <Star size={14} />
                                                             </button>
@@ -210,13 +211,13 @@ export default function Markets() {
                                                             <div className="flex items-center gap-2.5">
                                                                 <CoinIcon symbol={asset.symbol} size={28} />
                                                                 <div className="min-w-0">
-                                                                    <p className="font-bold text-[13px] text-white truncate">{asset.name}</p>
-                                                                    <span className="text-[10px] text-[rgba(255,255,255,0.25)] uppercase tracking-wider">{asset.symbol}</span>
+                                                                    <p className="font-bold text-[13px] text-text-main truncate">{asset.name}</p>
+                                                                    <span className="text-[10px] text-text-dim uppercase tracking-wider">{asset.symbol}</span>
                                                                 </div>
                                                             </div>
                                                         </td>
                                                         <td className="text-right py-3 px-3 sm:px-5">
-                                                            <span className="font-mono price-mono font-bold text-white">
+                                                            <span className="font-mono price-mono font-bold text-text-main">
                                                                 {formatAmount(convert(asset.price), currency)}
                                                             </span>
                                                         </td>
@@ -226,10 +227,10 @@ export default function Markets() {
                                                                 {Math.abs(asset.change || 0).toFixed(2)}%
                                                             </div>
                                                         </td>
-                                                        <td className="text-right py-3 px-3 sm:px-5 text-[rgba(255,255,255,0.4)] font-mono price-mono text-[12px] hidden md:table-cell">
+                                                        <td className="text-right py-3 px-3 sm:px-5 text-text-dim font-mono price-mono text-[12px] hidden md:table-cell">
                                                             {asset.rawMarketCap ? formatAmount(convert(asset.rawMarketCap), currency) : 'N/A'}
                                                         </td>
-                                                        <td className="text-right py-3 px-3 sm:px-5 text-[rgba(255,255,255,0.4)] font-mono price-mono text-[12px] hidden lg:table-cell">
+                                                        <td className="text-right py-3 px-3 sm:px-5 text-text-dim font-mono price-mono text-[12px] hidden lg:table-cell">
                                                             {asset.rawVolume ? formatAmount(convert(asset.rawVolume), currency) : 'N/A'}
                                                         </td>
                                                         <td className="text-right py-3 px-3 sm:px-5">
@@ -238,7 +239,7 @@ export default function Markets() {
                                                                     e.stopPropagation();
                                                                     setSelectedAsset(asset);
                                                                 }}
-                                                                className="bg-accent/[0.1] hover:bg-accent/[0.2] text-accent border border-accent/[0.25] px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all"
+                                                                className="bg-brand-600/[0.1] hover:bg-brand-600/[0.2] text-brand-600 border border-brand-500/[0.25] px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all"
                                                             >
                                                                 Trade <ArrowUpRight size={12} className="ml-0.5 inline" />
                                                             </button>
@@ -260,7 +261,7 @@ export default function Markets() {
                                                 setSearchTerm('');
                                                 setFilters({ minPrice: 0, performance: null, marketCap: null, sortBy: 'marketCapDesc' });
                                             }}
-                                            className="text-accent text-sm font-bold hover:text-white"
+                                            className="text-brand-600 text-sm font-bold hover:text-text-main"
                                         >
                                             Clear all filters
                                         </button>

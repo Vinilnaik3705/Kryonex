@@ -13,12 +13,12 @@ const EmptyState = ({
             <motion.div
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-6 border border-white/5"
+                className="w-20 h-20 bg-hover rounded-full flex items-center justify-center mb-6 border border-border"
             >
-                <Icon size={32} className="text-slate-500" />
+                <Icon size={32} className="text-text-dim" />
             </motion.div>
-            <h3 className="text-xl font-bold text-white mb-2">{title}</h3>
-            <p className="text-slate-500 max-w-sm mb-8">{description}</p>
+            <h3 className="text-xl font-bold text-text-main mb-2">{title}</h3>
+            <p className="text-text-muted max-w-sm mb-8">{description}</p>
             {action && (
                 <div className="mt-2">
                     {action}

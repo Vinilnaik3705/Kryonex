@@ -21,13 +21,13 @@ export default function StrategyBuilder() {
     };
 
     return (
-        <div className="bg-secondary/30 rounded-2xl border border-slate-700/50 p-6">
+        <div className="glass-card rounded-2xl p-6">
             <div className="flex justify-between items-center mb-6">
                 <div>
-                    <h3 className="text-xl font-bold flex items-center gap-2">
+                    <h3 className="text-xl font-bold text-text-main flex items-center gap-2">
                         <Settings className="text-accent" /> Strategy Builder
                     </h3>
-                    <p className="text-xs text-slate-500 mt-1">Define logic for automated trading simulations</p>
+                    <p className="text-xs text-text-dim mt-1">Define logic for automated trading simulations</p>
                 </div>
                 <button
                     onClick={addRule}
@@ -39,15 +39,15 @@ export default function StrategyBuilder() {
 
             <div className="space-y-3">
                 {rules.map((rule) => (
-                    <div key={rule.id} className="flex flex-wrap items-center gap-3 p-4 bg-black/40 rounded-xl border border-white/5">
-                        <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">IF</span>
-                        <select className="bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-xs font-bold focus:outline-none">
+                    <div key={rule.id} className="flex flex-wrap items-center gap-3 p-4 bg-hover rounded-xl border border-border">
+                        <span className="text-xs font-bold text-text-dim uppercase tracking-widest">IF</span>
+                        <select className="bg-card border border-border rounded-lg px-3 py-1.5 text-xs font-bold text-text-main focus:outline-none focus:border-accent">
                             <option>{rule.indicator}</option>
                             <option>RSI</option>
                             <option>MACD</option>
                             <option>Price</option>
                         </select>
-                        <select className="bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-xs font-bold focus:outline-none">
+                        <select className="bg-card border border-border rounded-lg px-3 py-1.5 text-xs font-bold text-text-main focus:outline-none focus:border-accent">
                             <option>{rule.condition}</option>
                             <option>Crosses Under</option>
                             <option>Greater Than</option>
@@ -56,16 +56,16 @@ export default function StrategyBuilder() {
                         <input
                             type="text"
                             defaultValue={rule.value}
-                            className="w-20 bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-xs font-bold focus:outline-none"
+                            className="w-20 bg-card border border-border rounded-lg px-3 py-1.5 text-xs font-bold text-text-main focus:outline-none focus:border-accent"
                         />
-                        <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">THEN</span>
+                        <span className="text-xs font-bold text-text-dim uppercase tracking-widest">THEN</span>
                         <select className="bg-success/10 border border-success/20 text-success rounded-lg px-3 py-1.5 text-xs font-bold focus:outline-none">
                             <option>{rule.action}</option>
                             <option>Sell</option>
                         </select>
                         <button
                             onClick={() => removeRule(rule.id)}
-                            className="ml-auto p-2 text-slate-600 hover:text-danger hover:bg-danger/10 rounded-lg transition-colors"
+                            className="ml-auto p-2 text-text-dim hover:text-danger hover:bg-danger/10 rounded-lg transition-colors"
                         >
                             <Trash2 size={14} />
                         </button>
@@ -74,7 +74,7 @@ export default function StrategyBuilder() {
             </div>
 
             <div className="mt-8 flex items-center justify-between p-4 bg-accent/5 rounded-xl border border-accent/10">
-                <div className="flex items-center gap-3 text-slate-400">
+                <div className="flex items-center gap-3 text-text-muted">
                     <Info size={16} />
                     <span className="text-xs font-medium">This strategy will be used for backtesting simulation</span>
                 </div>

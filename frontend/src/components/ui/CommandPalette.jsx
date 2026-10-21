@@ -25,18 +25,18 @@ export default function CommandPalette() {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
 
-    // Mock Data for Commands
+    // Mock Data for Commands (crypto-only)
     const commands = useMemo(() => [
         { id: 'home', label: 'Go to Dashboard', icon: LayoutDashboard, type: 'navigation', path: '/' },
         { id: 'markets', label: 'Go to Markets', icon: TrendingUp, type: 'navigation', path: '/markets' },
         { id: 'portfolio', label: 'Go to Portfolio', icon: Wallet, type: 'navigation', path: '/portfolio' },
         { id: 'settings', label: 'Go to Settings', icon: Settings, type: 'navigation', path: '/settings' },
 
-        { id: 'btc', label: 'Bitcoin (BTC)', icon: TrendingUp, type: 'asset', path: '/trade/bitcoin' },
-        { id: 'eth', label: 'Ethereum (ETH)', icon: TrendingUp, type: 'asset', path: '/trade/ethereum' },
-        { id: 'sol', label: 'Solana (SOL)', icon: TrendingUp, type: 'asset', path: '/trade/solana' },
-        { id: 'tsla', label: 'Tesla (TSLA)', icon: TrendingUp, type: 'asset', path: '/trade/tesla' },
-        { id: 'aapl', label: 'Apple (AAPL)', icon: TrendingUp, type: 'asset', path: '/trade/apple' },
+        { id: 'btc', label: 'Bitcoin (BTC)', icon: TrendingUp, type: 'asset', path: '/trade/BTC' },
+        { id: 'eth', label: 'Ethereum (ETH)', icon: TrendingUp, type: 'asset', path: '/trade/ETH' },
+        { id: 'sol', label: 'Solana (SOL)', icon: TrendingUp, type: 'asset', path: '/trade/SOL' },
+        { id: 'bnb', label: 'BNB (BNB)', icon: TrendingUp, type: 'asset', path: '/trade/BNB' },
+        { id: 'xrp', label: 'XRP (XRP)', icon: TrendingUp, type: 'asset', path: '/trade/XRP' },
 
     ], []);
 
@@ -98,37 +98,35 @@ export default function CommandPalette() {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={() => setIsOpen(false)}
-                        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
+                        className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[100]"
                     />
 
                     {/* Palette Modal */}
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.95, y: -20 }}
+                        initial={{ opacity: 0, scale: 0.96, y: -16 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                        transition={{ duration: 0.1 }}
-                        className="fixed top-[20%] left-1/2 -translate-x-1/2 w-full max-w-xl z-[101] px-4"
+                        exit={{ opacity: 0, scale: 0.96, y: -8 }}
+                        transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                        className="fixed top-[18%] left-1/2 -translate-x-1/2 w-full max-w-xl z-[101] px-4"
                     >
-                        <div className="bg-[#111] border border-white/10 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[60vh] ring-1 ring-white/10">
+                        <div className="glass-card rounded-2xl overflow-hidden flex flex-col max-h-[60vh] shadow-card-hover">
 
                             {/* Input Area */}
-                            <div className="flex items-center gap-3 px-4 py-4 border-b border-white/5">
-                                <Search className="text-slate-500" size={20} />
+                            <div className="flex items-center gap-3 px-4 py-4 border-b border-border">
+                                <Search className="text-text-dim" size={20} />
                                 <input
                                     autoFocus
                                     type="text"
                                     placeholder="Search assets, pages, or commands..."
-                                    className="flex-1 bg-transparent text-lg text-white placeholder:text-slate-600 focus:outline-none"
+                                    className="flex-1 bg-transparent text-lg text-text-main placeholder:text-text-dim focus:outline-none"
                                     value={query}
                                     onChange={(e) => setQuery(e.target.value)}
                                 />
-                                <div className="flex items-center gap-1">
-                                    <span className="text-[10px] font-bold text-slate-500 bg-white/5 px-2 py-1 rounded">ESC</span>
-                                </div>
+                                <span className="text-[10px] font-bold text-text-dim bg-hover px-2 py-1 rounded">ESC</span>
                             </div>
 
                             {/* Results List */}
-                            <div className="overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                            <div className="overflow-y-auto p-2 scrollbar-thin">
                                 {filteredCommands.length > 0 ? (
                                     <div className="space-y-1">
                                         {filteredCommands.map((cmd, index) => (
@@ -136,39 +134,43 @@ export default function CommandPalette() {
                                                 key={cmd.id}
                                                 onClick={() => handleSelect(cmd)}
                                                 onMouseEnter={() => setSelectedIndex(index)}
-                                                className={`w-full flex items-center justify-between px-3 py-3 rounded-lg text-sm transition-colors group ${index === selectedIndex ? 'bg-accent text-white' : 'text-slate-400 hover:bg-white/5 hover:text-white'
-                                                    }`}
+                                                className={`w-full flex items-center justify-between px-3 py-3 rounded-xl text-sm transition-all group relative ${
+                                                    index === selectedIndex
+                                                        ? 'bg-brand-50 text-brand-700'
+                                                        : 'text-text-muted hover:bg-hover hover:text-text-main'
+                                                }`}
                                             >
                                                 <div className="flex items-center gap-3">
-                                                    <cmd.icon size={18} className={index === selectedIndex ? 'text-white' : 'text-slate-500 group-hover:text-white'} />
+                                                    <cmd.icon size={18} className={index === selectedIndex ? 'text-brand-600' : 'text-text-dim group-hover:text-text-main'} />
                                                     <span className="font-medium">{cmd.label}</span>
                                                 </div>
                                                 {cmd.type === 'asset' && (
-                                                    <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${index === selectedIndex ? 'bg-white/20 text-white' : 'bg-white/5 text-slate-500'
-                                                        }`}>
+                                                    <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${
+                                                        index === selectedIndex ? 'bg-brand-100 text-brand-700' : 'bg-hover text-text-dim'
+                                                    }`}>
                                                         Asset
                                                     </span>
                                                 )}
                                                 {index === selectedIndex && (
-                                                    <ArrowRight size={14} className="text-white opacity-50" />
+                                                    <ArrowRight size={14} className="text-brand-500" />
                                                 )}
                                             </button>
                                         ))}
                                     </div>
                                 ) : (
-                                    <div className="py-8 text-center text-slate-500">
+                                    <div className="py-8 text-center text-text-dim">
                                         No results found.
                                     </div>
                                 )}
                             </div>
 
                             {/* Footer */}
-                            <div className="bg-white/5 px-4 py-2 border-t border-white/5 flex items-center justify-between text-[10px] text-slate-500 font-medium">
+                            <div className="bg-secondary/50 px-4 py-2 border-t border-border flex items-center justify-between text-[10px] text-text-dim font-medium">
                                 <div className="flex gap-4">
-                                    <span><span className="text-slate-300">↑↓</span> to navigate</span>
-                                    <span><span className="text-slate-300">↵</span> to select</span>
+                                    <span><span className="text-text-main">↑↓</span> navigate</span>
+                                    <span><span className="text-text-main">↵</span> select</span>
                                 </div>
-                                <span>Design by Kryonex</span>
+                                <span>Kryonex</span>
                             </div>
                         </div>
                     </motion.div>

@@ -108,11 +108,11 @@ const Market = () => {
     const opacity4 = useTransform(scrollYProgress, [0.75, 0.9, 1], [0, 1, 1]);
 
     return (
-        <div ref={containerRef} className="relative h-[400vh] bg-[#050505]">
+        <div ref={containerRef} className="relative h-[400vh] bg-primary">
             <div className="sticky top-0 left-0 h-screen w-full overflow-hidden">
                 {isLoading && (
-                    <div className="absolute inset-0 flex items-center justify-center text-white/50 z-20">
-                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white"></div>
+                    <div className="absolute inset-0 flex items-center justify-center text-text-dim z-20">
+                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-brand-500"></div>
                     </div>
                 )}
                 <canvas
@@ -131,7 +131,7 @@ const Market = () => {
                         style={{ opacity: opacity1 }}
                         className="absolute inset-0 flex items-center justify-center px-4"
                     >
-                        <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-8xl font-bold tracking-tighter text-white/90 text-center">
+                        <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-8xl font-bold tracking-tighter text-text-main text-center">
                             Markets. <br /> In Motion.
                         </h1>
                     </motion.div>
@@ -142,10 +142,10 @@ const Market = () => {
                         className="absolute inset-0 flex items-center container mx-auto px-4 sm:px-6 lg:px-10"
                     >
                         <div className="max-w-xl drop-shadow-2xl">
-                            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-6xl font-medium tracking-tight text-white mb-2 sm:mb-4">
+                            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-6xl font-medium tracking-tight text-text-main mb-2 sm:mb-4">
                                 Liquidity Tells a Story.
                             </h2>
-                            <p className="text-base sm:text-lg md:text-xl text-white/80 font-medium">
+                            <p className="text-base sm:text-lg md:text-xl text-text-muted font-medium">
                                 Watch the dynamics of the market unfold in real-time.
                             </p>
                         </div>
@@ -156,11 +156,11 @@ const Market = () => {
                         style={{ opacity: opacity3 }}
                         className="absolute inset-0 flex items-center justify-end container mx-auto px-4 sm:px-6 lg:px-10"
                     >
-                        <div className="max-w-xl text-right bg-black/40 backdrop-blur-md p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl border border-white/10 shadow-2xl">
-                            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-6xl font-medium tracking-tight text-white mb-2 sm:mb-4 drop-shadow-lg">
+                        <div className="max-w-xl text-right glass-card backdrop-blur-md p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl shadow-card-hover">
+                            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-6xl font-medium tracking-tight text-text-main mb-2 sm:mb-4">
                                 Volatility Is the <br className="hidden sm:block" /> Price of Freedom.
                             </h2>
-                            <p className="text-base sm:text-lg md:text-xl text-white/80 font-medium drop-shadow-md">
+                            <p className="text-base sm:text-lg md:text-xl text-text-muted font-medium">
                                 Embrace the chaos. Master the movement.
                             </p>
                         </div>
@@ -171,10 +171,10 @@ const Market = () => {
                         style={{ opacity: opacity4 }}
                         className="absolute inset-0 flex items-center justify-center flex-col px-4"
                     >
-                        <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold tracking-tight text-slate-900 mb-4 sm:mb-6 lg:mb-8 text-center drop-shadow-sm">
+                        <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold tracking-tight text-text-main mb-4 sm:mb-6 lg:mb-8 text-center">
                             Trade Without Borders.
                         </h2>
-                        <button className="bg-slate-900 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-full font-bold text-base sm:text-lg hover:bg-slate-800 transition-colors pointer-events-auto shadow-xl hover:shadow-2xl hover:-translate-y-1 transform">
+                        <button className="btn-primary px-6 sm:px-8 py-3 sm:py-4 rounded-full font-bold text-base sm:text-lg pointer-events-auto hover:-translate-y-1 transform">
                             Get Started
                         </button>
                     </motion.div>

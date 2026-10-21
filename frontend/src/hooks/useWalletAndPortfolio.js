@@ -20,8 +20,10 @@ export const useWalletAndPortfolio = () => {
     const [walletBalance, setWalletBalance] = useState(INITIAL_BALANCE);
     const [portfolioHoldings, setPortfolioHoldings] = useState([]);
     const [storageReady, setStorageReady] = useState(false);
+    const [remoteStateReady, setRemoteStateReady] = useState(false);
 
     const [livePrices, setLivePrices] = useState({});
+    const [pricesUpdatedAt, setPricesUpdatedAt] = useState(0);
     const lastKnownPricesRef = useRef({}); // Persists last successfully fetched prices across re-renders
     const syncTimerRef = useRef(null);
 
@@ -29,6 +31,7 @@ export const useWalletAndPortfolio = () => {
         let isActive = true;
 
         setStorageReady(false);
+        setRemoteStateReady(false);
 
         try {
             const storedWallet = localStorage.getItem(walletStorageKey);
@@ -88,6 +91,12 @@ export const useWalletAndPortfolio = () => {
 
                 if (cancelled) return;
 
+                setRemoteStateReady(true);
+
+                // A default response means that this user has never synced state.
+                // Keep the local browser snapshot and upload it instead of erasing it.
+                if (remote.persisted === false) return;
+
                 const remoteWallet = Number(remote.walletBalance);
                 const remotePortfolio = Array.isArray(remote.portfolioHoldings) ? remote.portfolioHoldings : [];
 
@@ -97,6 +106,7 @@ export const useWalletAndPortfolio = () => {
                 setPortfolioHoldings(remotePortfolio.filter((holding) => (holding.type || 'crypto') === 'crypto'));
                 setStorageReady(true);
             } catch (error) {
+                setRemoteStateReady(true);
                 console.warn('Remote simulation state load failed, falling back to local storage:', error?.message || error);
             }
         };
@@ -132,7 +142,7 @@ export const useWalletAndPortfolio = () => {
     }, [portfolioHoldings, storageReady, portfolioStorageKey]);
 
     useEffect(() => {
-        if (!storageReady || !user?.id) return undefined;
+        if (!storageReady || !remoteStateReady || !user?.id) return undefined;
 
         const syncRemoteState = async () => {
             try {
@@ -163,57 +173,67 @@ export const useWalletAndPortfolio = () => {
                 clearTimeout(syncTimerRef.current);
             }
         };
-    }, [walletBalance, portfolioHoldings, storageReady, user?.id, getAuthHeaders]);
+    }, [walletBalance, portfolioHoldings, storageReady, remoteStateReady, user?.id, getAuthHeaders]);
 
-    // Fetch live prices for all holdings — parallel with last-known-good-price fallback
+    // Fetch all live prices in one request so portfolio values update quickly and consistently.
     useEffect(() => {
+        let cancelled = false;
+        let requestSequence = 0;
+        let requestInFlight = false;
+
         const fetchPrices = async () => {
             if (portfolioHoldings.length === 0) {
                 setLivePrices({});
+                setPricesUpdatedAt(0);
                 return;
             }
 
-            try {
-                const uniqueSymbols = [...new Set(portfolioHoldings.map(h => h.symbol))];
+            if (requestInFlight) return;
+            requestInFlight = true;
 
-                // Fetch all prices in parallel for speed
-                const results = await Promise.allSettled(
-                    uniqueSymbols.map(async (symbol) => {
-                        const endpoint = `${API_BASE_URL}/crypto/price/${symbol}`;
-                        const response = await axios.get(endpoint);
-                        const price = response.data?.data?.price ??
-                            response.data?.price ??
-                            response.data?.data?.regularMarketPrice ??
-                            null;
-                        return { symbol, price: price ? Number(price) : null };
-                    })
-                );
+            const sequence = ++requestSequence;
+            try {
+                const uniqueSymbols = [...new Set(portfolioHoldings.map((holding) => holding.symbol))];
+                const response = await axios.get(`${API_BASE_URL}/crypto/batch`, {
+                    params: { symbols: uniqueSymbols.join(',') },
+                    timeout: 2500,
+                    headers: { 'Cache-Control': 'no-cache' },
+                });
+                if (cancelled || sequence !== requestSequence) return;
+
+                const results = Array.isArray(response.data?.data) ? response.data.data : [];
 
                 const prices = { ...lastKnownPricesRef.current }; // Start with last known good prices
 
-                for (const result of results) {
-                    if (result.status === 'fulfilled' && result.value.price !== null) {
-                        const { symbol, price } = result.value;
+                results.forEach((result, index) => {
+                    const symbol = uniqueSymbols[index];
+                    const price = Number(result?.data?.price ?? result?.price);
+                    if (symbol && Number.isFinite(price) && price > 0) {
                         prices[symbol] = price;
                         lastKnownPricesRef.current[symbol] = price; // Persist for future fallback
                     }
-                    // If fetch failed, we keep the last known price from the spread above
-                }
+                });
 
                 setLivePrices(prices);
+                setPricesUpdatedAt(Date.now());
             } catch (e) {
                 console.error('Failed to fetch live prices:', e);
                 // On total failure, use last known prices so P/L doesn't show false 0%
-                if (Object.keys(lastKnownPricesRef.current).length > 0) {
+                if (!cancelled && sequence === requestSequence && Object.keys(lastKnownPricesRef.current).length > 0) {
                     setLivePrices({ ...lastKnownPricesRef.current });
                 }
+            } finally {
+                requestInFlight = false;
             }
         };
 
-        // Fetch immediately and then every 5 seconds for near real-time P/L
+        // Fetch immediately and refresh once per second for visible live P/L.
         fetchPrices();
-        const interval = setInterval(fetchPrices, 5000);
-        return () => clearInterval(interval);
+        const interval = setInterval(fetchPrices, 1000);
+        return () => {
+            cancelled = true;
+            clearInterval(interval);
+        };
     }, [portfolioHoldings]);
 
     /**
@@ -238,7 +258,7 @@ export const useWalletAndPortfolio = () => {
 
         // Add to portfolio or update existing holding
         setPortfolioHoldings(prev => {
-            const existingIndex = prev.findIndex(h => h.symbol === symbol && h.type === 'crypto');
+            const existingIndex = prev.findIndex(h => h.symbol === symbol && h.type === type);
 
             if (existingIndex >= 0) {
                 // Update existing holding with new average price
@@ -270,7 +290,7 @@ export const useWalletAndPortfolio = () => {
                     ...prev,
                     {
                         symbol,
-                        type: 'crypto',
+                        type,
                         quantity,
                         buyPrice,
                         trades: [
@@ -429,6 +449,7 @@ export const useWalletAndPortfolio = () => {
         setWalletBalance,
         portfolioHoldings,
         livePrices,
+        pricesUpdatedAt,
         buyAsset,
         sellAsset,
         calculatePortfolioValue,

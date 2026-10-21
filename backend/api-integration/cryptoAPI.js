@@ -36,12 +36,25 @@ class CryptoAPI {
         // History: 30s (chart data, less critical)
         // Search: 60s (rarely changes)
         this.cacheTTL = {
-            price: 5,       // Individual price lookups
+            price: 1,       // Individual price lookups
             market: 5,      // Market list (top coins, trending)
             history: 30,    // Chart/kline history
             search: 60      // Symbol search results
         };
         this.activeDailyOpenPromises = new Map();
+        this.activeRequests = new Map();
+        this.http = axios.create({
+            baseURL: this.baseURL,
+            timeout: 3500,
+            headers: { Accept: 'application/json' }
+        });
+    }
+
+    async dedupe(cacheKey, loader) {
+        if (this.activeRequests.has(cacheKey)) return this.activeRequests.get(cacheKey);
+        const request = Promise.resolve().then(loader).finally(() => this.activeRequests.delete(cacheKey));
+        this.activeRequests.set(cacheKey, request);
+        return request;
     }
 
     normalizeSymbol(symbol) {
@@ -102,7 +115,7 @@ class CryptoAPI {
 
         const promise = (async () => {
             try {
-                const response = await axios.get(`${this.baseURL}/klines`, {
+                const response = await this.http.get('/klines', {
                     params: {
                         symbol: tradingPair,
                         interval: '1d',
@@ -135,7 +148,7 @@ class CryptoAPI {
         const normalized = this.normalizeSymbol(symbol);
         const tradingPair = `${normalized}USDT`;
 
-        // Check cache first (5s TTL for near real-time)
+        // Check cache first (1s TTL for near real-time)
         const cacheKey = `crypto:price:${tradingPair}`;
         const cached = await cacheService.get(cacheKey);
         if (cached) {
@@ -144,22 +157,18 @@ class CryptoAPI {
 
         try {
             // Get 24hr ticker data
-            const response = await axios.get(`${this.baseURL}/ticker/24hr`, {
+            const response = await this.http.get('/ticker/24hr', {
                 params: { symbol: tradingPair }
             });
 
             const ticker = response.data;
             const lastPrice = parseFloat(ticker.lastPrice);
 
-            // Calculate daily price change percentage relative to midnight UTC open price
-            const dailyOpen = await this.getDailyOpenPrice(tradingPair);
-            let change = parseFloat(ticker.priceChange);
-            let changePercent = parseFloat(ticker.priceChangePercent);
-
-            if (dailyOpen) {
-                change = lastPrice - dailyOpen;
-                changePercent = (change / dailyOpen) * 100;
-            }
+            // The 24h ticker already contains the open price and change. Avoid a
+            // second Binance request per coin so batch quotes stay fast.
+            const dailyOpen = parseFloat(ticker.openPrice);
+            const change = parseFloat(ticker.priceChange);
+            const changePercent = parseFloat(ticker.priceChangePercent);
 
             const data = {
                 symbol: tradingPair,
@@ -171,7 +180,7 @@ class CryptoAPI {
                 quoteVolume: parseFloat(ticker.quoteVolume),
                 high: parseFloat(ticker.highPrice),
                 low: parseFloat(ticker.lowPrice),
-                open: dailyOpen || parseFloat(ticker.openPrice),
+                open: dailyOpen,
                 previousClose: parseFloat(ticker.prevClosePrice),
                 trades: ticker.count,
                 timestamp: new Date(ticker.closeTime).toISOString()
@@ -185,6 +194,60 @@ class CryptoAPI {
             }
             throw new Error(`Failed to fetch crypto price for ${symbol}: ${error.message}`);
         }
+    }
+
+    /**
+     * Get only the latest prices for multiple symbols in one Binance request.
+     * This is intentionally lighter than getPrice(), which also loads 24h
+     * ticker metadata used by market cards.
+     */
+    async getBatchPrices(symbols = []) {
+        const normalizedSymbols = [...new Set(symbols.map((symbol) => this.normalizeSymbol(symbol)))];
+        const pairs = normalizedSymbols.map((symbol) => `${symbol}USDT`);
+        const result = [];
+        const missingPairs = [];
+
+        for (const pair of pairs) {
+            const cached = await cacheService.get(`crypto:latest:${pair}`);
+            if (cached?.price) {
+                result.push(cached);
+            } else {
+                missingPairs.push(pair);
+            }
+        }
+
+        if (missingPairs.length) {
+            try {
+                const response = await this.http.get('/ticker/price', {
+                    params: { symbols: JSON.stringify(missingPairs) },
+                });
+
+                for (const ticker of Array.isArray(response.data) ? response.data : []) {
+                    const price = parseFloat(ticker.price);
+                    if (!Number.isFinite(price)) continue;
+                    const pair = String(ticker.symbol || '').toUpperCase();
+                    const item = {
+                        symbol: pair,
+                        baseAsset: pair.endsWith('USDT') ? pair.slice(0, -4) : pair,
+                        price,
+                        timestamp: new Date().toISOString(),
+                    };
+                    await cacheService.set(`crypto:latest:${pair}`, item, this.cacheTTL.price);
+                    result.push(item);
+                }
+            } catch (error) {
+                for (const pair of missingPairs) {
+                    const fallback = FALLBACK_CRYPTO.find((item) => item.symbol === pair);
+                    if (fallback) result.push({ ...fallback, timestamp: new Date().toISOString() });
+                }
+                if (!result.length) {
+                    throw new Error(`Failed to fetch crypto batch prices: ${error.message}`);
+                }
+            }
+        }
+
+        const bySymbol = new Map(result.map((item) => [item.symbol, item]));
+        return pairs.map((pair) => bySymbol.get(pair)).filter(Boolean);
     }
 
     /**
@@ -202,7 +265,7 @@ class CryptoAPI {
         }
 
         try {
-            const response = await axios.get(`${this.baseURL}/klines`, {
+            const response = await this.http.get('/klines', {
                 params: {
                     symbol: tradingPair,
                     interval,
@@ -239,9 +302,7 @@ class CryptoAPI {
 
         try {
             // Try to get real data from Binance
-            const response = await axios.get(`${this.baseURL}/ticker/24hr`, {
-                timeout: 5000 // 5 second timeout
-            });
+            const response = await this.http.get('/ticker/24hr');
 
             // Filter USDT pairs and sort by quote volume (proxy for market cap)
             const rawTickers = response.data
@@ -249,18 +310,10 @@ class CryptoAPI {
                 .sort((a, b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
                 .slice(0, limit);
 
-            const data = await Promise.all(
-                rawTickers.map(async (ticker) => {
+            const data = rawTickers.map((ticker) => {
                     const lastPrice = parseFloat(ticker.lastPrice);
-                    const dailyOpen = await this.getDailyOpenPrice(ticker.symbol);
-                    
                     let change = parseFloat(ticker.priceChange);
                     let changePercent = parseFloat(ticker.priceChangePercent);
-
-                    if (dailyOpen) {
-                        change = lastPrice - dailyOpen;
-                        changePercent = (change / dailyOpen) * 100;
-                    }
 
                     return {
                         symbol: ticker.symbol,
@@ -274,8 +327,7 @@ class CryptoAPI {
                         low: parseFloat(ticker.lowPrice),
                         source: 'binance'
                     };
-                })
-            );
+                });
 
             await cacheService.set(cacheKey, data, this.cacheTTL.market); // 5s cache for near real-time
             return data;
@@ -309,7 +361,7 @@ class CryptoAPI {
         }
 
         try {
-            const response = await axios.get(`${this.baseURL}/ticker/24hr`);
+            const response = await this.http.get('/ticker/24hr');
 
             // Filter USDT pairs and sort by price change percentage
             const rawGainers = response.data
@@ -322,16 +374,9 @@ class CryptoAPI {
                 .sort((a, b) => parseFloat(a.priceChangePercent) - parseFloat(b.priceChangePercent))
                 .slice(0, limit);
 
-            const gainers = await Promise.all(
-                rawGainers.map(async (ticker) => {
+            const gainers = rawGainers.map((ticker) => {
                     const lastPrice = parseFloat(ticker.lastPrice);
-                    const dailyOpen = await this.getDailyOpenPrice(ticker.symbol);
-                    
                     let changePercent = parseFloat(ticker.priceChangePercent);
-
-                    if (dailyOpen) {
-                        changePercent = ((lastPrice - dailyOpen) / dailyOpen) * 100;
-                    }
 
                     return {
                         symbol: ticker.symbol,
@@ -340,19 +385,11 @@ class CryptoAPI {
                         changePercent: changePercent,
                         volume: parseFloat(ticker.quoteVolume)
                     };
-                })
-            );
+                });
 
-            const losers = await Promise.all(
-                rawLosers.map(async (ticker) => {
+            const losers = rawLosers.map((ticker) => {
                     const lastPrice = parseFloat(ticker.lastPrice);
-                    const dailyOpen = await this.getDailyOpenPrice(ticker.symbol);
-                    
                     let changePercent = parseFloat(ticker.priceChangePercent);
-
-                    if (dailyOpen) {
-                        changePercent = ((lastPrice - dailyOpen) / dailyOpen) * 100;
-                    }
 
                     return {
                         symbol: ticker.symbol,
@@ -361,8 +398,7 @@ class CryptoAPI {
                         changePercent: changePercent,
                         volume: parseFloat(ticker.quoteVolume)
                     };
-                })
-            );
+                });
 
             const data = { gainers, losers };
             await cacheService.set(cacheKey, data, this.cacheTTL.market); // 5s cache for near real-time
@@ -384,7 +420,7 @@ class CryptoAPI {
         }
 
         try {
-            const response = await axios.get(`${this.baseURL}/exchangeInfo`);
+            const response = await this.http.get('/exchangeInfo');
             const symbols = response.data.symbols;
 
             const searchTerm = query.toUpperCase();
@@ -416,7 +452,7 @@ class CryptoAPI {
         const tradingPair = `${normalized}USDT`;
 
         try {
-            const response = await axios.get(`${this.baseURL}/exchangeInfo`, {
+            const response = await this.http.get('/exchangeInfo', {
                 params: { symbol: tradingPair }
             });
 

@@ -118,8 +118,8 @@ function changeToColor(change) {
         const t = Math.abs(clamped) / 10;
         return `rgb(${Math.round(58 + t * (213 - 58))}, ${Math.round(26 + t * (0 - 26))}, ${Math.round(26 + t * (0 - 26))})`;
     }
-    // Neutral zone (±0.1%) → #1e2a35
-    return '#1e2a35';
+    // Neutral zone (±0.1%) → #d6d8de
+    return '#d6d8de';
 }
 
 function HeatmapTile({ coin, onClick, isSelected, currency, convert, formatAmount }) {
@@ -222,7 +222,7 @@ function HeatmapTile({ coin, onClick, isSelected, currency, convert, formatAmoun
             {!isMedium && (
                 <span style={{
                     fontSize: priceSize,
-                    color: 'rgba(255,255,255,0.6)',
+                    color: 'rgba(255,255,255,0.85)',
                     fontFamily: 'JetBrains Mono, monospace',
                     whiteSpace: 'nowrap',
                     overflow: 'hidden',
@@ -373,20 +373,20 @@ export default function CryptoHeatmapGrid() {
 
     return (
         <div className="space-y-4 max-h-screen pb-4">
-            <div className="flex flex-col gap-4 rounded-3xl border border-white/[0.08] bg-black p-4 sm:p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.03)]">
+            <div className="flex flex-col gap-4 rounded-3xl border border-border bg-card p-4 sm:p-5 shadow-card">
                 <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-3">
-                        <div className="rounded-2xl border border-sky-400/20 bg-sky-400/10 p-2.5 text-sky-300 shadow-[0_0_24px_rgba(56,189,248,0.18)]">
+                        <div className="rounded-2xl border border-brand-100 bg-brand-50 p-2.5 text-brand-600 shadow-[0_0_24px_rgba(99,102,241,0.12)]">
                             <BarChart3 size={18} />
                         </div>
                         <div>
-                            <h1 className="text-xl sm:text-2xl font-bold text-white leading-none">Crypto Treemap</h1>
-                            <p className="text-[11px] sm:text-sm text-slate-400 mt-1 opacity-50">Proportional market visualization by capitalization and 24h performance.</p>
+                            <h1 className="text-xl sm:text-2xl font-bold text-text-main leading-none">Crypto Treemap</h1>
+                            <p className="text-[11px] sm:text-sm text-text-dim mt-1 opacity-50">Proportional market visualization by capitalization and 24h performance.</p>
                         </div>
                     </div>
                 </div>
 
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-white/5 pb-4">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-border pb-4">
                     <div className="flex flex-wrap gap-2">
                         {FILTERS.map((item) => {
                             const active = filter === item;
@@ -395,8 +395,8 @@ export default function CryptoHeatmapGrid() {
                                     key={item}
                                     onClick={() => setFilter(item)}
                                     className={`inline-flex items-center gap-2 rounded-full border px-3 sm:px-4 py-1.5 sm:py-2 text-[11px] sm:text-sm font-semibold transition-all ${active
-                                        ? 'border-sky-400/40 bg-sky-400 text-black shadow-[0_0_24px_rgba(56,189,248,0.25)]'
-                                        : 'border-white/[0.08] bg-white/[0.03] text-slate-300 hover:border-sky-400/30 hover:text-white'
+                                        ? 'border-brand-300 bg-brand-600 text-white shadow-[0_0_24px_rgba(99,102,241,0.2)]'
+                                        : 'border-border bg-hover text-text-muted hover:border-brand-200 hover:text-text-main'
                                         }`}
                                 >
                                     <Filter size={14} />
@@ -404,29 +404,29 @@ export default function CryptoHeatmapGrid() {
                                 </button>
                             );
                         })}
-                        <div className="w-px h-6 bg-white/10 mx-1 self-center hidden sm:block" />
+                        <div className="w-px h-6 bg-border mx-1 self-center hidden sm:block" />
                         <button
                             onClick={() => setHideStables(!hideStables)}
                             className={`inline-flex items-center gap-2 rounded-full border px-3 sm:px-4 py-1.5 sm:py-2 text-[11px] sm:text-sm font-semibold transition-all ${hideStables
-                                ? 'border-amber-400/40 bg-amber-400/10 text-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.1)]'
-                                : 'border-white/[0.08] bg-white/[0.03] text-slate-400 hover:text-white'
+                                ? 'border-amber-400/40 bg-amber-400/10 text-amber-600 shadow-[0_0_12px_rgba(251,191,36,0.06)]'
+                                : 'border-border bg-hover text-text-dim hover:text-text-main'
                                 }`}
                         >
                             Hide Stables {hideStables ? '(ON)' : '(OFF)'}
                         </button>
                     </div>
 
-                    <div className="flex items-center gap-3 rounded-2xl border border-[rgba(255,255,255,0.06)] bg-white/[0.03] px-4 py-2.5 sm:py-3 self-start lg:self-auto">
+                    <div className="flex items-center gap-3 rounded-2xl border border-border bg-hover px-4 py-2.5 sm:py-3 self-start lg:self-auto">
                         <div className="flex items-center gap-2 th-label">
                             <SortAsc size={14} /> Sort
                         </div>
                         <select
                             value={sortBy}
                             onChange={(event) => setSortBy(event.target.value)}
-                            className="bg-transparent text-sm font-semibold text-white outline-none"
+                            className="bg-transparent text-sm font-semibold text-text-main outline-none"
                         >
                             {SORTS.map((item) => (
-                                <option key={item.value} value={item.value} className="bg-black text-white">
+                                <option key={item.value} value={item.value} className="bg-card text-text-main">
                                     {item.label}
                                 </option>
                             ))}
@@ -435,10 +435,10 @@ export default function CryptoHeatmapGrid() {
                 </div>
                 
                 {/* Color Legend */}
-                <div className="flex items-center gap-3 text-[10px] sm:text-[11px] text-[rgba(255,255,255,0.4)] px-1 flex-wrap">
+                <div className="flex items-center gap-3 text-[10px] sm:text-[11px] text-text-dim px-1 flex-wrap">
                   <span>-10%</span>
-                  <div className="flex-1 max-w-[160px] h-2 rounded-full bg-gradient-to-right from-[#d50000] via-[#1e2a35] to-[#00c853]" 
-                       style={{ background: 'linear-gradient(to right, #d50000, #3a1a1a, #1e2a35, #1a3a2a, #00c853)' }} />
+                  <div className="flex-1 max-w-[160px] h-2 rounded-full"
+                       style={{ background: 'linear-gradient(to right, #d50000, #3a1a1a, #d6d8de, #1a3a2a, #00c853)' }} />
                   <span>+10%</span>
                   <span className="ml-auto opacity-60">Block size = Market Cap</span>
                 </div>
@@ -448,7 +448,7 @@ export default function CryptoHeatmapGrid() {
                 {/* Treemap Container */}
                 <div 
                     ref={containerRef} 
-                    className="flex-1 relative rounded-3xl border border-[rgba(255,255,255,0.06)] bg-black"
+                    className="flex-1 relative rounded-3xl border border-border bg-secondary"
                     style={{ 
                         overflow: 'hidden', 
                         height: isMobile ? '70vw' : '100%',
@@ -467,32 +467,32 @@ export default function CryptoHeatmapGrid() {
                         />
                     ))}
                     {loading && (
-                        <div className="absolute inset-0 flex items-center justify-center text-slate-500 bg-black/50 backdrop-blur-sm z-20">
+                        <div className="absolute inset-0 flex items-center justify-center text-text-dim bg-card/50 backdrop-blur-sm z-20">
                             <div className="flex flex-col items-center gap-3">
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-400"></div>
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-500"></div>
                                 <span className="text-sm font-medium">Syncing live market data...</span>
                             </div>
                         </div>
                     )}
                     {!loading && visibleTiles.length === 0 && (
-                        <div className="absolute inset-0 flex items-center justify-center text-slate-500">
+                        <div className="absolute inset-0 flex items-center justify-center text-text-dim">
                             No coins match the active filters.
                         </div>
                     )}
                     {hiddenCount > 0 && (
-                        <div className="absolute bottom-3 right-3 rounded-full bg-black/80 px-3 py-1.5 text-[10px] sm:text-xs font-bold text-slate-400 border border-white/10 backdrop-blur-md z-10 pointer-events-none shadow-lg">
+                        <div className="absolute bottom-3 right-3 rounded-full bg-card/80 px-3 py-1.5 text-[10px] sm:text-xs font-bold text-text-dim border border-border backdrop-blur-md z-10 pointer-events-none shadow-lg">
                             + {hiddenCount} more hidden
                         </div>
                     )}
                 </div>
 
-                <aside className={`${isMobile ? 'w-full' : 'lg:w-[340px] xl:w-[380px]'} flex-shrink-0 rounded-3xl border border-[rgba(255,255,255,0.06)] bg-black p-4 sm:p-5 h-full overflow-y-auto`}>
-                    <div className="flex items-center justify-between border-b border-[rgba(255,255,255,0.06)] pb-4">
+                <aside className={`${isMobile ? 'w-full' : 'lg:w-[340px] xl:w-[380px]'} flex-shrink-0 rounded-3xl border border-border bg-card p-4 sm:p-5 h-full overflow-y-auto`}>
+                    <div className="flex items-center justify-between border-b border-border pb-4">
                         <div className="flex items-center gap-3">
                             <CoinIcon symbol={selectedCoin.symbol} size={36} />
                             <div>
-                                <p className="text-[10px] font-bold text-accent uppercase tracking-widest opacity-60">Selected Asset</p>
-                                <h2 className="text-2xl font-black text-white">{selectedCoin.symbol}</h2>
+                                <p className="text-[10px] font-bold text-brand-600 uppercase tracking-widest opacity-60">Selected Asset</p>
+                                <h2 className="text-2xl font-black text-text-main">{selectedCoin.symbol}</h2>
                             </div>
                         </div>
                         <div className={`rounded-full p-2 ${selectedCoin.change24h >= 0 ? 'bg-success/[0.15] text-success shadow-[0_0_12px_rgba(34,211,160,0.15)]' : 'bg-danger/[0.15] text-danger shadow-[0_0_12px_rgba(244,63,94,0.15)]'}`}>
@@ -501,11 +501,11 @@ export default function CryptoHeatmapGrid() {
                     </div>
 
                     <div className="mt-5 space-y-4">
-                        <div className="rounded-2xl border border-[rgba(255,255,255,0.06)] bg-white/[0.03] p-4">
-                            <p className="text-[10px] tracking-widest text-[rgba(255,255,255,0.3)] font-bold uppercase mb-2">Live Price</p>
+                        <div className="rounded-2xl border border-border bg-hover p-4">
+                            <p className="text-[10px] tracking-widest text-text-dim font-bold uppercase mb-2">Live Price</p>
                             <div className="flex items-center justify-between gap-3">
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-2xl sm:text-3xl font-extrabold font-mono price-mono text-white truncate">
+                                    <p className="text-2xl sm:text-3xl font-extrabold font-mono price-mono text-text-main truncate">
                                         {formatAmount(convert(selectedCoin.price), currency)}
                                     </p>
                                 </div>
@@ -515,9 +515,9 @@ export default function CryptoHeatmapGrid() {
                             </div>
                         </div>
 
-                        <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+                        <div className="rounded-2xl border border-border bg-hover p-4">
                             <div className="mb-3 flex items-center justify-between">
-                                <p className="text-xs font-bold text-white opacity-60 uppercase tracking-widest">24h Trend</p>
+                                <p className="text-xs font-bold text-text-main opacity-60 uppercase tracking-widest">24h Trend</p>
                                 <Activity size={14} className={selectedCoin.change24h >= 0 ? 'text-[#22d3a0]' : 'text-[#f43f5e]'} />
                             </div>
                             <div className="flex justify-center py-2">
@@ -530,15 +530,15 @@ export default function CryptoHeatmapGrid() {
 
                         <div className="grid grid-cols-2 gap-3">
                             {getMarketStats(selectedCoin, currency, convert).map((stat) => (
-                                <div key={stat.label} className="rounded-xl border border-[rgba(255,255,255,0.06)] bg-white/[0.03] p-3">
-                                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{stat.label}</p>
-                                    <p className="mt-1 font-mono price-mono text-[12px] font-bold text-white truncate">{stat.value}</p>
+                                <div key={stat.label} className="rounded-xl border border-border bg-hover p-3">
+                                    <p className="text-[9px] font-bold text-text-dim uppercase tracking-widest">{stat.label}</p>
+                                    <p className="mt-1 font-mono price-mono text-[12px] font-bold text-text-main truncate">{stat.value}</p>
                                 </div>
                             ))}
                         </div>
 
-                        <div className="rounded-2xl border border-sky-400/15 bg-sky-400/5 p-4 text-xs text-slate-300 leading-relaxed">
-                            <div className="mb-2 flex items-center gap-2 text-sky-300 font-bold uppercase tracking-widest text-[10px]">
+                        <div className="rounded-2xl border border-brand-100 bg-brand-50 p-4 text-xs text-text-muted leading-relaxed">
+                            <div className="mb-2 flex items-center gap-2 text-brand-600 font-bold uppercase tracking-widest text-[10px]">
                                 <Sparkles size={14} />
                                 Market Insight
                             </div>

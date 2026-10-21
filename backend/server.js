@@ -4,7 +4,6 @@ const cors = require("cors");
 const helmet = require("helmet");
 const compression = require("compression");
 const cryptoRoutes = require("./routes/cryptoRoutes");
-const paymentRoutes = require("./routes/paymentRoutes");
 const newsRoutes = require("./routes/newsRoutes");
 const aiRoutes = require("./routes/aiRoutes");
 const simulationRoutes = require("./routes/simulationRoutes");
@@ -16,14 +15,17 @@ const websocketService = require("./services/websocketService");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const configuredOrigins = (process.env.CORS_ORIGINS || '').split(',').map((origin) => origin.trim()).filter(Boolean);
 const corsOptions = {
     origin: [
         "http://localhost:5173",
         "http://localhost:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000",
         "https://kryonex.vercel.app",
-        /^https:\/\/.*\.vercel\.app$/,
         "https://tradesim-9yh.pages.dev",
-        /^https:\/\/.*\.tradesim-9yh\.pages\.dev$/
+        ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
+        ...configuredOrigins
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -36,8 +38,8 @@ app.use(compression());
 // Middleware
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '100kb' }));
+app.use(express.urlencoded({ extended: false, limit: '100kb' }));
 
 
 connectDB();
@@ -56,8 +58,16 @@ app.get("/", (req, res) => {
     res.send("Kryonex Backend Running ✅");
 });
 
+app.get("/api", (req, res) => {
+    res.json({
+        success: true,
+        name: "Kryonex API",
+        health: "/health",
+        endpoints: ["/api/crypto", "/api/news", "/api/simulation", "/api/ai"],
+    });
+});
+
 app.use("/api/crypto", cryptoRoutes);
-app.use("/api/payment", paymentRoutes);
 app.use("/api/news", newsRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/simulation", simulationRoutes);

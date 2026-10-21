@@ -2,14 +2,14 @@ const express = require('express');
 const mongoose = require('mongoose');
 const SimulationState = require('../models/SimulationState');
 const { protect } = require('../middleware/authMiddleware');
+const fileSimulationStore = require('../services/simulationStore');
 
 const router = express.Router();
-const fallbackSimulationStore = new Map();
-
 const getDefaultSimulationState = (userId) => ({
     userId,
     walletBalance: 100000,
     portfolioHoldings: [],
+    persisted: false,
 });
 
 const isMongoConnected = () => mongoose.connection.readyState === 1;
@@ -31,9 +31,9 @@ const saveSimulationState = async (req, res) => {
                 lastSyncedAt: new Date(),
             };
 
-            fallbackSimulationStore.set(userId, nextState);
+            const persistedState = await fileSimulationStore.saveSimulationState(userId, nextState);
 
-            return res.json({ success: true, data: nextState });
+            return res.json({ success: true, data: persistedState });
         }
 
         const nextState = await SimulationState.findOneAndUpdate(
@@ -47,7 +47,7 @@ const saveSimulationState = async (req, res) => {
             { upsert: true, new: true, setDefaultsOnInsert: true }
         ).lean();
 
-        return res.json({ success: true, data: nextState });
+        return res.json({ success: true, data: { ...nextState, persisted: true } });
     } catch (error) {
         console.error('Failed to save simulation state:', error);
         return res.status(500).json({ success: false, error: 'Failed to save simulation state' });
@@ -62,7 +62,7 @@ router.get('/state', protect, async (req, res) => {
         }
 
         if (!isMongoConnected()) {
-            const state = fallbackSimulationStore.get(userId);
+            const state = await fileSimulationStore.getSimulationState(userId);
 
             return res.json({
                 success: true,
@@ -74,10 +74,11 @@ router.get('/state', protect, async (req, res) => {
 
         return res.json({
             success: true,
-            data: state || {
+            data: state ? { ...state, persisted: true } : {
                 userId,
                 walletBalance: 100000,
                 portfolioHoldings: [],
+                persisted: false,
             },
         });
     } catch (error) {

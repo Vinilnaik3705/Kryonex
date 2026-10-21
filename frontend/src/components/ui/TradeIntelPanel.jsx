@@ -64,28 +64,28 @@ export default function TradeIntelPanel({
     const priceLabel = side === 'buy' ? `Buy ${symbol}` : `Sell ${symbol}`;
 
     return (
-        <div className="flex h-full flex-col gap-3 rounded-xl border border-[rgba(255,255,255,0.06)] bg-[#050d14] p-3">
+        <div className="flex h-full flex-col gap-3 rounded-xl border border-border bg-card p-3">
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-[rgba(255,255,255,0.06)] pb-2.5">
+            <div className="flex items-center justify-between border-b border-border pb-2.5">
                 <div>
-                    <p className="th-label text-accent">Trade Intelligence</p>
-                    <h3 className="mt-0.5 text-lg font-extrabold text-white">{symbol}</h3>
+                    <p className="th-label text-brand-600">Trade Intelligence</p>
+                    <h3 className="mt-0.5 text-lg font-extrabold text-text-main">{symbol}</h3>
                 </div>
             </div>
 
             {/* Quick Trade */}
-            <section className="rounded-xl border border-[rgba(255,255,255,0.06)] bg-white/[0.02] p-3">
-                <div className="mb-2.5 flex items-center gap-2 text-[12px] font-bold text-white">
-                    <BadgeDollarSign size={14} className="text-accent" /> Quick Trade
+            <section className="rounded-xl border border-border bg-hover p-3">
+                <div className="mb-2.5 flex items-center gap-2 text-[12px] font-bold text-text-main">
+                    <BadgeDollarSign size={14} className="text-brand-600" /> Quick Trade
                 </div>
 
                 {/* Buy/Sell Toggle */}
-                <div className="grid grid-cols-2 gap-1.5 rounded-lg border border-[rgba(255,255,255,0.06)] bg-[#050d14] p-1">
+                <div className="grid grid-cols-2 gap-1.5 rounded-lg border border-border bg-secondary p-1">
                     <button
                         onClick={() => setSide('buy')}
                         className={`rounded-lg px-3 py-2 text-[12px] font-bold transition-all ${side === 'buy'
-                            ? 'bg-[rgba(34,211,160,0.15)] text-success shadow-[0_0_12px_rgba(34,211,160,0.15)]'
-                            : 'text-[rgba(255,255,255,0.3)] hover:text-white'
+                            ? 'bg-success/[0.12] text-success shadow-[0_0_12px_rgba(34,211,160,0.08)]'
+                            : 'text-text-dim hover:text-text-main'
                             }`}
                     >
                         Buy
@@ -93,8 +93,8 @@ export default function TradeIntelPanel({
                     <button
                         onClick={() => setSide('sell')}
                         className={`rounded-lg px-3 py-2 text-[12px] font-bold transition-all ${side === 'sell'
-                            ? 'bg-[rgba(244,63,94,0.12)] text-danger shadow-[0_0_12px_rgba(244,63,94,0.12)]'
-                            : 'text-[rgba(255,255,255,0.3)] hover:text-white'
+                            ? 'bg-danger/[0.12] text-danger shadow-[0_0_12px_rgba(244,63,94,0.08)]'
+                            : 'text-text-dim hover:text-text-main'
                             }`}
                     >
                         Sell
@@ -110,22 +110,22 @@ export default function TradeIntelPanel({
                         value={amount}
                         onChange={(event) => setAmount(event.target.value)}
                         placeholder="Enter amount"
-                        className="w-full rounded-lg border border-[rgba(255,255,255,0.06)] bg-white/[0.04] px-3 py-2.5 pr-14 font-mono price-mono text-white text-[13px] outline-none transition-colors placeholder:text-[rgba(255,255,255,0.2)] focus:border-accent/40"
+                        className="w-full rounded-lg border border-border bg-hover px-3 py-2.5 pr-14 font-mono price-mono text-text-main text-[13px] outline-none transition-colors placeholder:text-text-dim focus:border-brand-400/40"
                     />
-                    <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-[rgba(255,255,255,0.25)] tracking-wider">
+                    <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-text-dim tracking-wider">
                         USDT
                     </div>
                 </div>
 
                 {/* Estimate */}
-                <div className="mt-2.5 rounded-lg border border-[rgba(255,255,255,0.06)] bg-white/[0.02] px-3 py-2.5">
+                <div className="mt-2.5 rounded-lg border border-border bg-secondary/50 px-3 py-2.5">
                     <div className="flex items-center justify-between text-[12px]">
-                        <span className="text-[rgba(255,255,255,0.35)]">Estimated</span>
-                        <span className="font-mono price-mono font-bold text-white">≈ {estimateQuantity > 0 ? estimateQuantity.toLocaleString('en-US', { maximumFractionDigits: 6 }) : '0'} {symbol}</span>
+                        <span className="text-text-dim">Estimated</span>
+                        <span className="font-mono price-mono font-bold text-text-main">≈ {estimateQuantity > 0 ? estimateQuantity.toLocaleString('en-US', { maximumFractionDigits: 6 }) : '0'} {symbol}</span>
                     </div>
                     <div className="mt-1 flex items-center justify-between text-[11px]">
-                        <span className="text-[rgba(255,255,255,0.2)]">Wallet</span>
-                        <span className="font-mono price-mono text-[rgba(255,255,255,0.4)]">{formatAmount(convert(walletBalance), currency)}</span>
+                        <span className="text-text-dim">Wallet</span>
+                        <span className="font-mono price-mono text-text-muted">{formatAmount(convert(walletBalance), currency)}</span>
                     </div>
                 </div>
 
@@ -134,8 +134,8 @@ export default function TradeIntelPanel({
                     onClick={submitTrade}
                     disabled={!canSubmit || isSubmitting}
                     className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-[13px] font-extrabold transition-all active:scale-[0.99]
-                        bg-gradient-to-r from-success to-accent text-black
-                        hover:shadow-[0_0_20px_rgba(34,211,160,0.3)]
+                        bg-brand-gradient text-white
+                        hover:shadow-[0_0_20px_rgba(99,102,241,0.25)]
                         disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:shadow-none"
                 >
                     {side === 'buy' ? <ArrowUpRight size={15} /> : <ArrowDownRight size={15} />}
@@ -150,16 +150,16 @@ export default function TradeIntelPanel({
             </section>
 
             {/* Market Mood */}
-            <section className="rounded-xl border border-[rgba(255,255,255,0.06)] bg-white/[0.02] p-3">
-                <div className="mb-2 flex items-center gap-2 text-[12px] font-bold text-white">
+            <section className="rounded-xl border border-border bg-hover p-3">
+                <div className="mb-2 flex items-center gap-2 text-[12px] font-bold text-text-main">
                     <Flame size={14} className={mood.tone} /> Market Mood
                 </div>
-                <div className="flex items-center justify-between text-[9px] uppercase tracking-[0.2em] text-[rgba(255,255,255,0.2)]">
+                <div className="flex items-center justify-between text-[9px] uppercase tracking-[0.2em] text-text-dim">
                     <span>Bearish</span>
                     <span>Neutral</span>
                     <span>Bullish</span>
                 </div>
-                <div className="mt-1.5 h-[5px] overflow-hidden rounded-full bg-white/[0.04]">
+                <div className="mt-1.5 h-[5px] overflow-hidden rounded-full bg-secondary">
                     <div
                         className={`h-full rounded-full bg-gradient-to-r ${mood.bar} transition-all`}
                         style={{ width: `${Math.max(8, Math.min(100, mood.value))}%` }}
@@ -167,14 +167,14 @@ export default function TradeIntelPanel({
                 </div>
                 <div className="mt-2 flex items-center justify-between text-[12px]">
                     <span className={`font-bold ${mood.tone}`}>{mood.hint}</span>
-                    <span className="font-mono price-mono text-[rgba(255,255,255,0.35)]">{Math.round(Math.max(8, Math.min(100, mood.value)))}%</span>
+                    <span className="font-mono price-mono text-text-dim">{Math.round(Math.max(8, Math.min(100, mood.value)))}%</span>
                 </div>
             </section>
 
             {/* Key Stats */}
-            <section className="rounded-xl border border-[rgba(255,255,255,0.06)] bg-white/[0.02] p-3">
-                <div className="mb-2 flex items-center gap-2 text-[12px] font-bold text-white">
-                    <BarChart3 size={14} className="text-accent" /> Key Stats
+            <section className="rounded-xl border border-border bg-hover p-3">
+                <div className="mb-2 flex items-center gap-2 text-[12px] font-bold text-text-main">
+                    <BarChart3 size={14} className="text-brand-600" /> Key Stats
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                     <StatCard label="24h High" value={formatAmount(convert(assetStats?.high), currency)} />
@@ -185,27 +185,27 @@ export default function TradeIntelPanel({
             </section>
 
             {/* My Activity */}
-            <section className="min-h-0 flex-1 rounded-xl border border-[rgba(255,255,255,0.06)] bg-white/[0.02] p-3 overflow-hidden flex flex-col">
-                <div className="mb-2 flex items-center gap-2 text-[12px] font-bold text-white">
-                    <Clock3 size={14} className="text-accent" /> My Activity
+            <section className="min-h-0 flex-1 rounded-xl border border-border bg-hover p-3 overflow-hidden flex flex-col">
+                <div className="mb-2 flex items-center gap-2 text-[12px] font-bold text-text-main">
+                    <Clock3 size={14} className="text-brand-600" /> My Activity
                 </div>
                 <div className="space-y-1.5 overflow-y-auto pr-1">
                     {recentTrades.length === 0 ? (
-                        <div className="rounded-lg border border-[rgba(255,255,255,0.06)] bg-[#050d14]/60 px-3 py-3 text-[12px] text-[rgba(255,255,255,0.25)]">
+                        <div className="rounded-lg border border-border bg-secondary/60 px-3 py-3 text-[12px] text-text-dim">
                             No trades yet on {symbol}
                         </div>
                     ) : (
                         recentTrades.slice(0, 4).map((trade, index) => (
-                            <div key={`${trade.date}-${index}`} className="flex items-center justify-between rounded-lg border border-[rgba(255,255,255,0.04)] bg-[#050d14]/40 px-3 py-2.5 text-[12px]">
+                            <div key={`${trade.date}-${index}`} className="flex items-center justify-between rounded-lg border border-border bg-secondary/40 px-3 py-2.5 text-[12px]">
                                 <div className="flex items-center gap-2">
                                     <span className={`rounded-md px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.15em] ${trade.type === 'sell' ? 'bg-danger/[0.12] text-danger' : 'bg-success/[0.12] text-success'}`}>
                                         {trade.type || 'buy'}
                                     </span>
-                                    <span className="font-semibold text-white">{trade.quantity.toLocaleString('en-US', { maximumFractionDigits: 6 })} {symbol}</span>
+                                    <span className="font-semibold text-text-main">{trade.quantity.toLocaleString('en-US', { maximumFractionDigits: 6 })} {symbol}</span>
                                 </div>
                                 <div className="text-right">
-                                    <div className="font-mono price-mono text-[11px] font-bold text-white">{formatAmount(convert(trade.price), currency)}</div>
-                                    <div className="text-[10px] text-[rgba(255,255,255,0.2)]">{getTimeAgo(trade.date)}</div>
+                                    <div className="font-mono price-mono text-[11px] font-bold text-text-main">{formatAmount(convert(trade.price), currency)}</div>
+                                    <div className="text-[10px] text-text-dim">{getTimeAgo(trade.date)}</div>
                                 </div>
                             </div>
                         ))
@@ -217,8 +217,8 @@ export default function TradeIntelPanel({
 }
 
 const StatCard = ({ label, value }) => (
-    <div className="rounded-lg border border-[rgba(255,255,255,0.06)] bg-[#050d14]/50 p-2.5">
+    <div className="rounded-lg border border-border bg-secondary/50 p-2.5">
         <div className="th-label">{label}</div>
-        <div className="mt-1.5 font-mono price-mono text-[13px] font-bold text-white">{value}</div>
+        <div className="mt-1.5 font-mono price-mono text-[13px] font-bold text-text-main">{value}</div>
     </div>
 );

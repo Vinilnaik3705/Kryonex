@@ -19,3 +19,19 @@ npm-debug.log*
 # OS files
 .DS_Store
 Thumbs.db
+
+# DeepDoc
+deepdoc-site/out/
+.deepdoc/chatbot/
+chatbot_backend/.venv/
+chatbot_backend/__pycache__/
+.deepdoc_manifest.json
+
+# Local runtime and agent artifacts
+backend/data/
+backend/dev-server.log
+frontend/dev-server.log
+.opencode/omnirush/
+.zcode/
+documint/.documint-local-cache.json
+PocketFlow-Tutorial-Codebase-Knowledge/
