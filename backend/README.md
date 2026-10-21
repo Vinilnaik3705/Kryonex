@@ -20,7 +20,7 @@ cp .env.example .env
 
 2. (Optional) Update `.env` with your preferences. The defaults work out of the box.
 
-For persistent signed-in trading state, set `MONGO_URI`. When MongoDB is unavailable, local development uses the ignored `SIMULATION_DATA_FILE` fallback (default: `backend/data/simulation-state.json`).
+For persistent signed-in trading state, set `DATABASE_URL`. When PostgreSQL is unavailable, local development uses the ignored `SIMULATION_DATA_FILE` fallback (default: `backend/data/simulation-state.json`).
 
 ### Running the Server
 

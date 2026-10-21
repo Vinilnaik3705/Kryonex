@@ -1,7 +1,8 @@
-// Centralized API configuration. Accept both names so existing deployments do
-// not silently fall back to localhost and produce confusing 404/connection errors.
-const configuredUrl = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
-const BASE_URL = configuredUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
-const API_BASE_URL = `${BASE_URL}/api`;
+// Use Vite's local proxy in development. In production, either variable may
+// point to the deployed backend origin, with or without a trailing /api.
+const configuredUrl = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_BACKEND_URL;
+const API_BASE_URL = configuredUrl
+    ? `${configuredUrl.replace(/\/api\/?$/, '').replace(/\/$/, '')}/api`
+    : '/api';
 
 export default API_BASE_URL;

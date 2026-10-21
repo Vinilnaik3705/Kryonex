@@ -10,7 +10,7 @@ const simulationRoutes = require("./routes/simulationRoutes");
 const coinLogos = require("./routes/coinLogos");
 const errorHandler = require("./middleware/errorHandler");
 const rateLimiter = require("./middleware/rateLimiter");
-const connectDB = require("./config/db");
+const { connectDB }= require("./config/db");
 const websocketService = require("./services/websocketService");
 
 const app = express();
@@ -23,6 +23,8 @@ const corsOptions = {
         "http://127.0.0.1:5173",
         "http://127.0.0.1:3000",
         "https://kryonex.vercel.app",
+        "https://kryonex-seven.vercel.app",
+        /^https:\/\/.*\.vercel\.app$/,
         "https://tradesim-9yh.pages.dev",
         ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
         ...configuredOrigins
