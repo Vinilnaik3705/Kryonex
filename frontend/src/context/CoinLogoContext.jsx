@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import API_BASE_URL from '../config/api';
-import axios from 'axios';
+import apiClient from '../lib/apiClient';
 
 const CoinLogoContext = createContext({});
 
@@ -25,7 +24,7 @@ export function CoinLogoProvider({ children }) {
       return;
     }
 
-    axios.get(`${API_BASE_URL}/coin-logos`)
+    apiClient.get('/coin-logos')
       .then(r => r.data)
       .then(data => {
         setLogos({ ...data, ...MANUAL_OVERRIDES });

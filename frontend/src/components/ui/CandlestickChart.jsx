@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createChart, CandlestickSeries, HistogramSeries, LineSeries } from 'lightweight-charts';
-import API_BASE_URL from '../../config/api';
+import apiClient from '../../lib/apiClient';
+import { subscribeCryptoPrice } from '../../hooks/useCryptoPrice';
 import { formatPrice as smartFormatPrice } from '../../utils/formatPrice';
 
 const CRYPTO_SYMBOLS = {
@@ -490,85 +491,32 @@ const CandlestickChart = ({
                     }
                 };
 
-                const streamInterval = timeframeConfig.streamInterval || timeframeConfig.interval;
-                let directReconnectTimer = null;
-                let directReconnectAttempt = 0;
-                let directStreamStopped = false;
-                const startCryptoLiveStream = () => {
-                    if (directStreamStopped) return;
-                    try {
-                        const directSocket = new WebSocket(
-                            `wss://stream.binance.com:9443/ws/${cryptoSymbol.toLowerCase()}@kline_${streamInterval}`
-                        );
-                        wsRef.current = directSocket;
-                        directSocket.onopen = () => { directReconnectAttempt = 0; };
-                        directSocket.onmessage = (event) => {
-                            try {
-                                const message = JSON.parse(event.data);
-                                const kline = message?.k;
-                                if (!kline) return;
-                                handleLiveUpdate({
-                                    time: Math.floor(Number(kline.t) / 1000),
-                                    open: parseNumber(kline.o),
-                                    high: parseNumber(kline.h),
-                                    low: parseNumber(kline.l),
-                                    close: parseNumber(kline.c),
-                                    volume: parseNumber(kline.v),
-                                });
-                            } catch (error) {
-                                console.error('Binance websocket parse error:', error);
-                            }
-                        };
-                        directSocket.onerror = () => directSocket.close();
-                        directSocket.onclose = () => {
-                            if (directStreamStopped || isStaleRequest(requestId)) return;
-                            const delay = Math.min(1000 * (2 ** directReconnectAttempt), 10000);
-                            directReconnectAttempt += 1;
-                            directReconnectTimer = window.setTimeout(startCryptoLiveStream, delay);
-                        };
-                    } catch {
-                        directReconnectTimer = window.setTimeout(startCryptoLiveStream, 3000);
-                    }
-                };
-
-                // Try backend WS gateway first, fallback to direct Binance stream
+                // Use the backend gateway when available; REST polling remains the safe fallback.
                 const backendSocket = tryBackendWebSocket(
                     `crypto:${cryptoSymbol}`,
                     handleLiveUpdate,
-                    () => {
-                        if (isStaleRequest(requestId)) return;
-                        startCryptoLiveStream();
-                    }
+                    () => {}
                 );
                 wsRef.current = backendSocket;
 
-                const pollCurrentPrice = async () => {
+                // Subscribe to the shared price poller (8s, deduplicated, back-off) as REST fallback
+                const unsubscribeSharedPrice = subscribeCryptoPrice(assetSymbol, (priceState) => {
                     if (isStaleRequest(requestId)) return;
-                    try {
-                        const response = await fetch(`${API_BASE_URL}/crypto/price/${encodeURIComponent(assetSymbol)}`, { cache: 'no-store' });
-                        if (!response.ok) return;
-                        const price = Number((await response.json())?.data?.price);
-                        if (!Number.isFinite(price)) return;
-                        const base = rawCryptoCandlesRef.current.at(-1) || nextCandles.at(-1);
-                        if (!base) return;
-                        handleLiveUpdate({
-                            ...base,
-                            close: price,
-                            high: Math.max(base.high, price),
-                            low: Math.min(base.low, price),
-                            time: base.time,
-                        });
-                    } catch {
-                        // The WebSocket remains the primary transport.
-                    }
-                };
+                    const price = priceState.price;
+                    if (!Number.isFinite(price)) return;
+                    const base = rawCryptoCandlesRef.current.at(-1) || nextCandles.at(-1);
+                    if (!base) return;
+                    handleLiveUpdate({
+                        ...base,
+                        close: price,
+                        high: Math.max(base.high, price),
+                        low: Math.min(base.low, price),
+                        time: base.time,
+                    });
+                });
 
-                const pricePollTimer = window.setInterval(pollCurrentPrice, 1000);
-                pollCurrentPrice();
                 realtimeCleanupRef.current = () => {
-                    directStreamStopped = true;
-                    if (directReconnectTimer) window.clearTimeout(directReconnectTimer);
-                    window.clearInterval(pricePollTimer);
+                    unsubscribeSharedPrice();
                     backendSocket?.close?.();
                     wsRef.current?.close?.();
                     wsRef.current = null;

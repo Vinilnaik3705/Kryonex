@@ -2,8 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import MainLayout from '../layouts/MainLayout';
 import { ArrowLeft, Calendar, User, Tag, ExternalLink } from 'lucide-react';
-import axios from 'axios';
-import API_BASE_URL from '../config/api';
+import apiClient from '../lib/apiClient';
 
 export default function NewsDetail() {
     const { id } = useParams();
@@ -19,7 +18,7 @@ export default function NewsDetail() {
             setLoading(true);
             setError('');
             try {
-                const res = await axios.get(`${API_BASE_URL}/news?category=crypto&limit=50`);
+                const res = await apiClient.get('/news?category=crypto&limit=50');
                 if (!active) return;
                 if (res.data?.success) {
                     const found = res.data.data.find((a) => String(a.id) === String(id));

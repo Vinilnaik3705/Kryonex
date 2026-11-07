@@ -6,11 +6,10 @@ import { ArrowUpRight, ArrowDownRight, DollarSign, TrendingUp, TrendingDown, Act
 import BentoCard from '../components/ui/BentoCard';
 import CoinIcon from '../components/ui/CoinIcon';
 import useWalletAndPortfolio from '../hooks/useWalletAndPortfolio';
-import axios from 'axios';
+import apiClient from '../lib/apiClient';
 import { Link, useNavigate } from 'react-router-dom';
 import MarketToggle from '../components/ui/MarketToggle';
 import CryptoChatbot from '../components/CryptoChatbot';
-import API_BASE_URL from '../config/api';
 import { useCurrency } from '../context/CurrencyContext';
 import { formatAmount } from '../utils/formatCurrency';
 
@@ -53,7 +52,7 @@ export default function Dashboard() {
     const { data: marketData = [], isLoading: loading } = useQuery({
         queryKey: ['dashboard-market'],
         queryFn: async () => {
-            const response = await axios.get(`${API_BASE_URL}/crypto/market-cap?limit=5`, { timeout: 4000 });
+            const response = await apiClient.get('/crypto/market-cap?limit=5', { timeout: 4000 });
             if (!response.data.success) throw new Error('Market data unavailable');
             return response.data.data.map(item => ({
                 id: item.symbol,
@@ -69,7 +68,7 @@ export default function Dashboard() {
     const { data: news = [], isLoading: newsLoading } = useQuery({
         queryKey: ['dashboard-news'],
         queryFn: async () => {
-            const response = await axios.get(`${API_BASE_URL}/news?limit=10`, { timeout: 5000 });
+            const response = await apiClient.get('/news?limit=10', { timeout: 5000 });
             if (!response.data.success) throw new Error('News unavailable');
             return response.data.data;
         },

@@ -6,14 +6,11 @@ import AssetDrawer from '../components/ui/AssetDrawer';
 import { useMarket } from '../context/MarketContext';
 import { Link } from 'react-router-dom';
 import EmptyState from '../components/ui/EmptyState';
-import axios from 'axios';
-import API_BASE_URL from '../config/api';
+import apiClient from '../lib/apiClient';
 import { formatPrice } from '../utils/formatPrice';
 import { useCurrency } from '../context/CurrencyContext';
 import { formatAmount } from '../utils/formatCurrency';
 import CoinIcon from '../components/ui/CoinIcon';
-
-const API_URL = `${API_BASE_URL}`;
 
 export default function Watchlist() {
     const { toggleWatchlist, isInWatchlist, watchlist } = useMarket();
@@ -29,8 +26,7 @@ export default function Watchlist() {
         const fetchAssets = async () => {
             if (isInitial) setLoading(true);
             try {
-                const endpoint = `${API_URL}/crypto/market-cap?limit=100`;
-                const response = await axios.get(endpoint);
+                const response = await apiClient.get('/crypto/market-cap?limit=100');
 
                 if (response.data.success || response.data.data) {
                     const data = response.data.data || response.data;

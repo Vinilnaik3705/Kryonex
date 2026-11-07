@@ -17,15 +17,20 @@ const normalizeSymbols = (value) => [...new Set(String(value || '')
  * GET /api/crypto/price/:symbol
  * Get real-time crypto price
  */
-router.get('/price/:symbol', async (req, res, next) => {
+router.get('/price/:symbol', async (req, res) => {
     try {
         const { symbol } = req.params;
         if (!/^[a-zA-Z0-9_-]{1,15}$/.test(symbol)) return res.status(400).json({ success: false, error: 'Invalid symbol' });
         const data = await cryptoAPI.getPrice(symbol);
         res.set('Cache-Control', 'no-store');
-        res.json({ success: true, data });
+        return res.status(200).json({ success: true, data });
     } catch (error) {
-        next(error);
+        console.error(`[GET /price/${req.params.symbol}] Handled error:`, error.message);
+        const statusCode = error.statusCode === 400 ? 400 : 503;
+        return res.status(statusCode).json({
+            success: false,
+            error: error.message || 'Price temporarily unavailable'
+        });
     }
 });
 
@@ -105,7 +110,7 @@ router.get('/search', async (req, res, next) => {
  * Get prices for multiple crypto symbols
  * Query params: symbols (comma-separated list)
  */
-router.get('/batch', async (req, res, next) => {
+router.get('/batch', async (req, res) => {
     try {
         const { symbols } = req.query;
         if (!symbols) {
@@ -122,9 +127,14 @@ router.get('/batch', async (req, res, next) => {
         const prices = await cryptoAPI.getBatchPrices(symbolList);
 
         res.set('Cache-Control', 'no-store');
-        res.json({ success: true, data: prices });
+        return res.status(200).json({ success: true, data: prices });
     } catch (error) {
-        next(error);
+        console.error('[GET /batch] Handled error:', error.message);
+        const statusCode = error.statusCode === 400 ? 400 : 503;
+        return res.status(statusCode).json({
+            success: false,
+            error: error.message || 'Batch prices temporarily unavailable'
+        });
     }
 });
 

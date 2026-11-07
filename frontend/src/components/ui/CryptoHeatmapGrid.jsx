@@ -2,8 +2,7 @@ import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { Activity, ArrowDownRight, ArrowUpRight, BarChart3, ChevronRight, Filter, Flame, MessageCircle, SortAsc, Sparkles, TrendingUp, X } from 'lucide-react';
 import { useCurrency } from '../../context/CurrencyContext';
 import { formatAmount } from '../../utils/formatCurrency';
-import axios from 'axios';
-import API_BASE_URL from '../../config/api';
+import apiClient from '../../lib/apiClient';
 import CoinIcon from './CoinIcon';
 import { hierarchy, treemap, treemapSquarify } from 'd3-hierarchy';
 
@@ -270,7 +269,7 @@ export default function CryptoHeatmapGrid() {
     useEffect(() => {
         const fetchMarketData = async () => {
             try {
-                const response = await axios.get(`${API_BASE_URL}/crypto/market-cap?limit=50`);
+                const response = await apiClient.get('/crypto/market-cap?limit=50');
                 if (response.data.success) {
                     const formatted = response.data.data.map(item => {
                         const current = item.price;

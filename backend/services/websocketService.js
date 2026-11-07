@@ -9,6 +9,8 @@ class WebSocketService {
 
         // Crypto WebSocket connections (symbol -> ws connection to Binance)
         this.binanceConnections = new Map();
+        this.reconnectAttempts = new Map();
+        this.reconnectTimers = new Map();
     }
 
     /**
@@ -173,6 +175,10 @@ class WebSocketService {
                 this.binanceConnections.delete(cleanSymbol);
                 logger.info(`Closed Binance stream connection for: ${cleanSymbol}`);
             }
+            const reconnectTimer = this.reconnectTimers.get(cleanSymbol);
+            if (reconnectTimer) clearTimeout(reconnectTimer);
+            this.reconnectTimers.delete(cleanSymbol);
+            this.reconnectAttempts.delete(cleanSymbol);
         }
     }
 
@@ -189,6 +195,10 @@ class WebSocketService {
 
         try {
             const binanceWs = new WebSocket(binanceUrl);
+
+            binanceWs.on('open', () => {
+                this.reconnectAttempts.delete(cleanSymbol);
+            });
 
             binanceWs.on('message', (data) => {
                 try {
@@ -224,9 +234,20 @@ class WebSocketService {
                 logger.info(`Binance stream connection closed for ${cleanSymbol}`);
                 // Reconnect if there are still subscribers
                 if (this.topicSubscribers.has(topic)) {
-                    logger.info(`Reconnecting to Binance stream for ${cleanSymbol} in 3 seconds...`);
                     this.binanceConnections.delete(cleanSymbol);
-                    setTimeout(() => this.startCryptoFeed(symbol, topic), 3000);
+                    const attempts = this.reconnectAttempts.get(cleanSymbol) || 0;
+                    if (attempts >= 3) {
+                        logger.warn(`Stopping Binance reconnects for ${cleanSymbol} after ${attempts} failed attempts`);
+                        return;
+                    }
+                    const delay = Math.min(3000 * (2 ** attempts), 30000);
+                    this.reconnectAttempts.set(cleanSymbol, attempts + 1);
+                    logger.info(`Reconnecting to Binance stream for ${cleanSymbol} in ${delay}ms...`);
+                    const timer = setTimeout(() => {
+                        this.reconnectTimers.delete(cleanSymbol);
+                        this.startCryptoFeed(symbol, topic);
+                    }, delay);
+                    this.reconnectTimers.set(cleanSymbol, timer);
                 }
             });
 

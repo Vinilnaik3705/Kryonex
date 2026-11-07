@@ -36,13 +36,17 @@ class CryptoAPI {
         // History: 30s (chart data, less critical)
         // Search: 60s (rarely changes)
         this.cacheTTL = {
-            price: 1,       // Individual price lookups
+            price: 10,      // Individual price lookups (10s to reduce Binance pressure)
             market: 5,      // Market list (top coins, trending)
             history: 30,    // Chart/kline history
             search: 60      // Symbol search results
         };
         this.activeDailyOpenPromises = new Map();
         this.activeRequests = new Map();
+        // In-memory price cache: Map<symbol, { data: object, timestamp: number }>
+        // TTL: 10 seconds per symbol. Serves fresh data or stale on external API failures.
+        this.priceCache = new Map();
+        this.PRICE_CACHE_TTL_MS = 10000;
         this.http = axios.create({
             baseURL: this.baseURL,
             timeout: 3500,
@@ -144,62 +148,84 @@ class CryptoAPI {
      * Get real-time crypto price
      */
     async getPrice(symbol) {
-        // Normalize symbol (e.g., BTC -> BTCUSDT)
         const normalized = this.normalizeSymbol(symbol);
         const tradingPair = `${normalized}USDT`;
 
-        // Check cache first (1s TTL for near real-time)
-        const cacheKey = `crypto:price:${tradingPair}`;
-        const cached = await cacheService.get(cacheKey);
-        if (cached) {
-            return cached;
+        // 1. In-memory cache check (Map with timestamp, TTL 10 seconds per symbol)
+        const cachedEntry = this.priceCache.get(tradingPair);
+        const now = Date.now();
+        if (cachedEntry && (now - cachedEntry.timestamp < this.PRICE_CACHE_TTL_MS)) {
+            return cachedEntry.data;
         }
 
-        try {
-            // Get 24hr ticker data
-            const response = await this.http.get('/ticker/24hr', {
-                params: { symbol: tradingPair }
-            });
+        // 2. Coalesce duplicate in-flight requests: if a fetch for the same symbol is pending, reuse that promise
+        const inFlightKey = `price:${tradingPair}`;
+        return this.dedupe(inFlightKey, async () => {
+            try {
+                const response = await this.http.get('/ticker/24hr', {
+                    params: { symbol: tradingPair }
+                });
 
-            const ticker = response.data;
-            const lastPrice = parseFloat(ticker.lastPrice);
+                const ticker = response.data;
+                const lastPrice = parseFloat(ticker.lastPrice);
+                const dailyOpen = parseFloat(ticker.openPrice);
+                const change = parseFloat(ticker.priceChange);
+                const changePercent = parseFloat(ticker.priceChangePercent);
 
-            // The 24h ticker already contains the open price and change. Avoid a
-            // second Binance request per coin so batch quotes stay fast.
-            const dailyOpen = parseFloat(ticker.openPrice);
-            const change = parseFloat(ticker.priceChange);
-            const changePercent = parseFloat(ticker.priceChangePercent);
+                const data = {
+                    symbol: tradingPair,
+                    baseAsset: normalized,
+                    price: lastPrice,
+                    change: change,
+                    changePercent: changePercent,
+                    volume: parseFloat(ticker.volume),
+                    quoteVolume: parseFloat(ticker.quoteVolume),
+                    high: parseFloat(ticker.highPrice),
+                    low: parseFloat(ticker.lowPrice),
+                    open: dailyOpen,
+                    previousClose: parseFloat(ticker.prevClosePrice),
+                    trades: ticker.count,
+                    timestamp: new Date(ticker.closeTime).toISOString()
+                };
 
-            const data = {
-                symbol: tradingPair,
-                baseAsset: normalized,
-                price: lastPrice,
-                change: change,
-                changePercent: changePercent,
-                volume: parseFloat(ticker.volume),
-                quoteVolume: parseFloat(ticker.quoteVolume),
-                high: parseFloat(ticker.highPrice),
-                low: parseFloat(ticker.lowPrice),
-                open: dailyOpen,
-                previousClose: parseFloat(ticker.prevClosePrice),
-                trades: ticker.count,
-                timestamp: new Date(ticker.closeTime).toISOString()
-            };
+                // Store fresh data in in-memory cache with timestamp
+                this.priceCache.set(tradingPair, { data, timestamp: Date.now() });
+                await cacheService.set(`crypto:price:${tradingPair}`, data, this.cacheTTL.price);
+                return data;
+            } catch (error) {
+                // 4. Log the real external API error (status code and message) in the backend console
+                const status = error.response?.status || 'NETWORK/TIMEOUT';
+                const msg = error.response?.data?.msg || error.message;
+                console.error(`[CryptoAPI] External price API failed for ${tradingPair}: Status=${status}, Message=${msg}`);
 
-            await cacheService.set(cacheKey, data, this.cacheTTL.price);
-            return data;
-        } catch (error) {
-            if (error.response?.status === 400) {
-                throw new Error(`Invalid trading pair: ${tradingPair}`);
+                // 3. If external API fails (429, timeout, network), return last cached value with stale: true
+                if (this.priceCache.has(tradingPair)) {
+                    const staleData = this.priceCache.get(tradingPair).data;
+                    console.warn(`[CryptoAPI] Serving stale in-memory price for ${tradingPair}`);
+                    return { ...staleData, stale: true };
+                }
+
+                // Check static fallback data if available
+                const fallback = FALLBACK_CRYPTO.find((item) => item.symbol === tradingPair);
+                if (fallback) {
+                    console.warn(`[CryptoAPI] Serving fallback price for ${tradingPair}`);
+                    return { ...fallback, stale: true, timestamp: new Date().toISOString() };
+                }
+
+                if (status === 400) {
+                    const err = new Error(`Invalid trading pair: ${tradingPair}`);
+                    err.statusCode = 400;
+                    throw err;
+                }
+                const err = new Error(`Failed to fetch crypto price for ${symbol}: ${msg}`);
+                err.statusCode = 503;
+                throw err;
             }
-            throw new Error(`Failed to fetch crypto price for ${symbol}: ${error.message}`);
-        }
+        });
     }
 
     /**
      * Get only the latest prices for multiple symbols in one Binance request.
-     * This is intentionally lighter than getPrice(), which also loads 24h
-     * ticker metadata used by market cards.
      */
     async getBatchPrices(symbols = []) {
         const normalizedSymbols = [...new Set(symbols.map((symbol) => this.normalizeSymbol(symbol)))];
@@ -207,22 +233,30 @@ class CryptoAPI {
         const result = [];
         const missingPairs = [];
 
+        // 1. In-memory cache check (Map with timestamp, TTL 10 seconds per symbol)
+        const now = Date.now();
         for (const pair of pairs) {
-            const cached = await cacheService.get(`crypto:latest:${pair}`);
-            if (cached?.price) {
-                result.push(cached);
+            const entry = this.priceCache.get(pair);
+            if (entry && (now - entry.timestamp < this.PRICE_CACHE_TTL_MS)) {
+                result.push(entry.data);
             } else {
                 missingPairs.push(pair);
             }
         }
 
         if (missingPairs.length) {
+            // 2. Coalesce duplicate in-flight batch requests
+            const batchCacheKey = `batch:${[...missingPairs].sort().join(',')}`;
+
             try {
-                const response = await this.http.get('/ticker/price', {
-                    params: { symbols: JSON.stringify(missingPairs) },
+                const fetched = await this.dedupe(batchCacheKey, async () => {
+                    const response = await this.http.get('/ticker/price', {
+                        params: { symbols: JSON.stringify(missingPairs) },
+                    });
+                    return Array.isArray(response.data) ? response.data : [];
                 });
 
-                for (const ticker of Array.isArray(response.data) ? response.data : []) {
+                for (const ticker of fetched) {
                     const price = parseFloat(ticker.price);
                     if (!Number.isFinite(price)) continue;
                     const pair = String(ticker.symbol || '').toUpperCase();
@@ -232,16 +266,39 @@ class CryptoAPI {
                         price,
                         timestamp: new Date().toISOString(),
                     };
+                    // Store fresh data in in-memory cache with timestamp
+                    this.priceCache.set(pair, { data: item, timestamp: Date.now() });
                     await cacheService.set(`crypto:latest:${pair}`, item, this.cacheTTL.price);
                     result.push(item);
                 }
             } catch (error) {
+                // 4. Log the real external API error (status code and message) in the backend console
+                const status = error.response?.status || 'NETWORK/TIMEOUT';
+                const msg = error.response?.data?.msg || error.message;
+                console.error(`[CryptoAPI] External batch API failed: Status=${status}, Message=${msg}`);
+
+                // 3. Return last cached value with stale: true on failure
+                let recovered = 0;
                 for (const pair of missingPairs) {
-                    const fallback = FALLBACK_CRYPTO.find((item) => item.symbol === pair);
-                    if (fallback) result.push({ ...fallback, timestamp: new Date().toISOString() });
+                    if (this.priceCache.has(pair)) {
+                        result.push({ ...this.priceCache.get(pair).data, stale: true });
+                        recovered++;
+                    } else {
+                        const fallback = FALLBACK_CRYPTO.find((item) => item.symbol === pair);
+                        if (fallback) {
+                            result.push({ ...fallback, stale: true, timestamp: new Date().toISOString() });
+                            recovered++;
+                        }
+                    }
                 }
+                if (recovered > 0) {
+                    console.warn(`[CryptoAPI] Serving ${recovered} stale/fallback batch prices`);
+                }
+
                 if (!result.length) {
-                    throw new Error(`Failed to fetch crypto batch prices: ${error.message}`);
+                    const upstreamError = new Error(`Failed to fetch crypto batch prices: ${msg}`);
+                    upstreamError.statusCode = 503;
+                    throw upstreamError;
                 }
             }
         }

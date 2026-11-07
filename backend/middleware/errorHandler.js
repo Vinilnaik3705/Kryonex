@@ -6,6 +6,10 @@ const logger = require('../services/loggerService');
 const errorHandler = (err, req, res, next) => {
     logger.error(`${req.method} ${req.originalUrl || req.url} - Error: ${err.message}`, { stack: err.stack });
 
+    if (res.headersSent) {
+        return next(err);
+    }
+
     // Default error status and message
     let statusCode = err.statusCode || 500;
     let message = statusCode >= 500 ? 'Internal Server Error' : (err.message || 'Request failed');

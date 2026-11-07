@@ -29,8 +29,8 @@ const corsOptions = {
         ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
         ...configuredOrigins
     ],
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "Cache-Control", "Pragma"],
     credentials: true
 };
 
@@ -91,6 +91,10 @@ if (require.main === module && !process.env.VERCEL) {
 
     // Initialize unified WebSocket gateway
     websocketService.init(server);
+
+    server.on("error", (error) => {
+        console.error(`HTTP server error: ${error.message}`);
+    });
 
     server.listen(PORT, () => {
         console.log(`Server running on port ${PORT}`);

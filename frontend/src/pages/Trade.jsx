@@ -6,16 +6,15 @@ import { Link } from 'react-router-dom';
 import CandlestickChart from '../components/ui/CandlestickChart';
 import TradeIntelPanel from '../components/ui/TradeIntelPanel';
 import useWalletAndPortfolio from '../hooks/useWalletAndPortfolio';
+import useCryptoPrice from '../hooks/useCryptoPrice';
 import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
-import API_BASE_URL from '../config/api';
+import apiClient from '../lib/apiClient';
 import { buildUserScopedStorageKey } from '../utils/storage';
 import { formatPrice } from '../utils/formatPrice';
 import { useCurrency } from '../context/CurrencyContext';
 import { formatAmount } from '../utils/formatCurrency';
 import CoinIcon from '../components/ui/CoinIcon';
 
-const API_URL = API_BASE_URL; // Alias for local usage in this file
 
 const TIMEFRAMES = [
     { label: '1 Min', value: '1MIN', interval: '1m', limit: 60, startOffset: 60 * 60 * 1000 },
@@ -169,7 +168,7 @@ const AssetSearchModal = ({ isOpen, onClose, onSelect, currentAsset }) => {
         const fetchAssets = async () => {
             setLoading(true);
             try {
-                const cryptoRes = await axios.get(`${API_URL}/crypto/market-cap?limit=50`);
+                const cryptoRes = await apiClient.get('/crypto/market-cap?limit=50');
 
                 const cryptoAssets = (cryptoRes.data.data || []).map(c => ({
                     symbol: c.baseAsset || c.symbol.replace('USDT', ''),
@@ -445,7 +444,23 @@ export default function Trade() {
     const primaryConfig = configs[0] || createConfig(1);
     const primarySymbol = primaryConfig.assetId;
     const primaryAssetType = normalizeAssetType(primaryConfig.assetType) || 'crypto';
-    const currentPrice = Number(livePrice) || 0;
+
+    // Shared singleton price poller for the primary asset (BTC, ETH, etc.)
+    const { price: hookPrice, data: hookPriceData } = useCryptoPrice(primarySymbol);
+    const currentPrice = Number(livePrice || hookPrice) || 0;
+
+    // Update snapshot with live data from shared hook when it arrives
+    useEffect(() => {
+        if (!hookPrice) return;
+        setAssetSnapshot((prev) => ({
+            ...prev,
+            price: hookPrice,
+            high: Number(hookPriceData?.high ?? prev.high ?? hookPrice),
+            low: Number(hookPriceData?.low ?? prev.low ?? hookPrice),
+            volume: Number(hookPriceData?.volume ?? prev.volume ?? 0),
+            changePercent: Number(hookPriceData?.changePercent ?? prev.changePercent ?? 0),
+        }));
+    }, [hookPrice, hookPriceData]);
 
     useEffect(() => {
         setLivePrice(null);
@@ -458,14 +473,11 @@ export default function Trade() {
             if (!primarySymbol) return;
 
             try {
-                const [quoteResponse, marketResponse] = await Promise.all([
-                    axios.get(`${API_URL}/crypto/price/${primarySymbol}`),
-                    axios.get(`${API_URL}/crypto/market-cap?limit=100`),
-                ]);
+                // Fetch market-cap list for metadata (high/low/cap/volume rank); price is handled by shared hook
+                const marketResponse = await apiClient.get('/crypto/market-cap?limit=100');
 
                 if (cancelled) return;
 
-                const quote = quoteResponse.data?.data || {};
                 const marketList = Array.isArray(marketResponse.data?.data)
                     ? marketResponse.data.data
                     : Array.isArray(marketResponse.data)
@@ -478,22 +490,16 @@ export default function Trade() {
                     return symbolMatch === searchSymbol || String(item.baseAsset || '').toUpperCase() === searchSymbol;
                 }) || {};
 
-                setAssetSnapshot({
-                    price: Number(quote.price ?? marketEntry.price ?? 0),
-                    high: Number(quote.high ?? marketEntry.high ?? quote.price ?? 0),
-                    low: Number(quote.low ?? marketEntry.low ?? quote.price ?? 0),
-                    volume: Number(quote.volume ?? marketEntry.volume ?? marketEntry.quoteVolume ?? 0),
+                setAssetSnapshot((previous) => ({
+                    price: Number(previous.price || marketEntry.price || 0),
+                    high: Number(marketEntry.high ?? previous.high ?? 0),
+                    low: Number(marketEntry.low ?? previous.low ?? 0),
+                    volume: Number(marketEntry.volume ?? marketEntry.quoteVolume ?? previous.volume ?? 0),
                     marketCap: Number(marketEntry.marketCap ?? marketEntry.quoteVolume ?? marketEntry.volume ?? 0),
-                    changePercent: Number(quote.changePercent ?? marketEntry.changePercent ?? 0),
-                });
+                    changePercent: Number(marketEntry.changePercent ?? previous.changePercent ?? 0),
+                }));
             } catch (error) {
-                console.error('Failed to load asset snapshot:', error);
-                if (!cancelled) {
-                    setAssetSnapshot((previous) => ({
-                        ...previous,
-                        price: Number(previous.price || 0),
-                    }));
-                }
+                console.warn('Failed to load asset snapshot metadata:', error?.message || error);
             }
         };
 

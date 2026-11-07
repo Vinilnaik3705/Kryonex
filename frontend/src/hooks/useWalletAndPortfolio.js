@@ -1,12 +1,113 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import axios from 'axios';
-import API_BASE_URL from '../config/api';
+import apiClient from '../lib/apiClient';
 import { useAuth } from '../context/AuthContext';
 import { buildUserScopedStorageKey } from '../utils/storage';
 
 const INITIAL_BALANCE = 100000; // Starting capital for trading simulator
 const WALLET_KEY = 'wallet_balance';
 const PORTFOLIO_KEY = 'portfolio_holdings';
+
+const PRICE_POLL_INTERVAL = 8000;
+
+const pricePoller = {
+    subscribers: new Map(),
+    timer: null,
+    controller: null,
+    inFlight: false,
+    failureDelay: PRICE_POLL_INTERVAL,
+};
+const remoteStateRequests = new Map();
+
+const loadRemoteStateOnce = (userId, headers) => {
+    const existingRequest = remoteStateRequests.get(userId);
+    if (existingRequest) return existingRequest;
+
+    const request = apiClient.get('/simulation/state', { headers })
+        .finally(() => remoteStateRequests.delete(userId));
+    remoteStateRequests.set(userId, request);
+    return request;
+};
+
+const schedulePricePoll = (delay) => {
+    if (pricePoller.timer) clearTimeout(pricePoller.timer);
+    if (pricePoller.subscribers.size === 0) {
+        pricePoller.timer = null;
+        return;
+    }
+    // Don't poll when the tab is hidden; resume on visibilitychange.
+    if (typeof document !== 'undefined' && document.hidden) {
+        pricePoller.timer = null;
+        return;
+    }
+    pricePoller.timer = setTimeout(runPricePoll, delay);
+};
+
+const runPricePoll = async () => {
+    if (pricePoller.inFlight || pricePoller.subscribers.size === 0) return;
+
+    const symbols = [...new Set(
+        [...pricePoller.subscribers.values()].flatMap((subscriber) => subscriber.symbols)
+    )];
+    if (symbols.length === 0) {
+        schedulePricePoll(PRICE_POLL_INTERVAL);
+        return;
+    }
+
+    pricePoller.inFlight = true;
+    pricePoller.controller = new AbortController();
+
+    try {
+        const response = await apiClient.get('/crypto/batch', {
+            params: { symbols: symbols.join(',') },
+            signal: pricePoller.controller.signal,
+        });
+        const results = Array.isArray(response.data?.data) ? response.data.data : [];
+        const prices = {};
+
+        results.forEach((result, index) => {
+            const symbol = symbols[index];
+            const price = Number(result?.data?.price ?? result?.price);
+            if (symbol && Number.isFinite(price) && price > 0) prices[symbol] = price;
+        });
+
+        pricePoller.failureDelay = PRICE_POLL_INTERVAL;
+        for (const subscriber of pricePoller.subscribers.values()) subscriber.onSuccess(prices);
+    } catch (error) {
+        if (error?.code !== 'ERR_CANCELED') {
+            console.warn('Failed to fetch live prices:', error?.message || error);
+            pricePoller.failureDelay = Math.min(pricePoller.failureDelay * 2, 60000);
+            for (const subscriber of pricePoller.subscribers.values()) subscriber.onFailure();
+        }
+    } finally {
+        pricePoller.inFlight = false;
+        pricePoller.controller = null;
+        schedulePricePoll(pricePoller.failureDelay);
+    }
+};
+
+if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && pricePoller.subscribers.size > 0 && !pricePoller.inFlight && !pricePoller.timer) {
+            schedulePricePoll(0);
+        }
+    });
+}
+
+const subscribeToPricePoller = (symbols, onSuccess, onFailure) => {
+    const id = Symbol('price-poller-subscriber');
+    pricePoller.subscribers.set(id, { symbols, onSuccess, onFailure });
+    if (!pricePoller.timer && !pricePoller.inFlight) runPricePoll();
+
+    return () => {
+        pricePoller.subscribers.delete(id);
+        if (pricePoller.subscribers.size === 0) {
+            if (pricePoller.timer) clearTimeout(pricePoller.timer);
+            pricePoller.timer = null;
+            if (pricePoller.controller) pricePoller.controller.abort();
+            pricePoller.failureDelay = PRICE_POLL_INTERVAL;
+        }
+    };
+};
 
 /**
  * Custom hook for managing wallet balance and portfolio holdings
@@ -26,12 +127,17 @@ export const useWalletAndPortfolio = () => {
     const [pricesUpdatedAt, setPricesUpdatedAt] = useState(0);
     const lastKnownPricesRef = useRef({}); // Persists last successfully fetched prices across re-renders
     const syncTimerRef = useRef(null);
+    const portfolioSymbolsKey = [...new Set(
+        portfolioHoldings.map((holding) => holding.symbol).filter(Boolean)
+    )].join(',');
 
     useEffect(() => {
         let isActive = true;
-
-        setStorageReady(false);
-        setRemoteStateReady(false);
+        const resetTimer = setTimeout(() => {
+            if (!isActive) return;
+            setStorageReady(false);
+            setRemoteStateReady(false);
+        }, 0);
 
         try {
             const storedWallet = localStorage.getItem(walletStorageKey);
@@ -52,21 +158,29 @@ export const useWalletAndPortfolio = () => {
             }
 
             if (isActive) {
+                const applyState = () => {
+                    if (!isActive) return;
                 setWalletBalance(Number.isFinite(nextWalletBalance) ? nextWalletBalance : INITIAL_BALANCE);
                 setPortfolioHoldings(nextPortfolio);
                 setStorageReady(true);
+                };
+                setTimeout(applyState, 0);
             }
         } catch (e) {
             console.error('Failed to load trading state:', e);
             if (isActive) {
-                setWalletBalance(INITIAL_BALANCE);
-                setPortfolioHoldings([]);
-                setStorageReady(true);
+                setTimeout(() => {
+                    if (!isActive) return;
+                    setWalletBalance(INITIAL_BALANCE);
+                    setPortfolioHoldings([]);
+                    setStorageReady(true);
+                }, 0);
             }
         }
 
         return () => {
             isActive = false;
+            clearTimeout(resetTimer);
         };
     }, [walletStorageKey, portfolioStorageKey]);
 
@@ -86,7 +200,7 @@ export const useWalletAndPortfolio = () => {
                 const headers = await getAuthHeaders();
                 if (!headers.Authorization) return;
 
-                const response = await axios.get(`${API_BASE_URL}/simulation/state`, { headers });
+                const response = await loadRemoteStateOnce(user.id, headers);
                 const remote = response.data?.data || {};
 
                 if (cancelled) return;
@@ -149,8 +263,8 @@ export const useWalletAndPortfolio = () => {
                 const headers = await getAuthHeaders();
                 if (!headers.Authorization) return;
 
-                await axios.put(
-                    `${API_BASE_URL}/simulation/state`,
+                await apiClient.put(
+                    '/simulation/state',
                     {
                         walletBalance,
                         portfolioHoldings,
@@ -175,66 +289,36 @@ export const useWalletAndPortfolio = () => {
         };
     }, [walletBalance, portfolioHoldings, storageReady, remoteStateReady, user?.id, getAuthHeaders]);
 
-    // Fetch all live prices in one request so portfolio values update quickly and consistently.
+    // Share one self-scheduling price poller across every mounted hook instance.
     useEffect(() => {
         let cancelled = false;
-        let requestSequence = 0;
-        let requestInFlight = false;
+        const symbols = portfolioSymbolsKey ? portfolioSymbolsKey.split(',') : [];
 
-        const fetchPrices = async () => {
-            if (portfolioHoldings.length === 0) {
-                setLivePrices({});
-                setPricesUpdatedAt(0);
-                return;
-            }
+        if (!portfolioSymbolsKey) {
+            return undefined;
+        }
 
-            if (requestInFlight) return;
-            requestInFlight = true;
-
-            const sequence = ++requestSequence;
-            try {
-                const uniqueSymbols = [...new Set(portfolioHoldings.map((holding) => holding.symbol))];
-                const response = await axios.get(`${API_BASE_URL}/crypto/batch`, {
-                    params: { symbols: uniqueSymbols.join(',') },
-                    timeout: 2500,
-                    headers: { 'Cache-Control': 'no-cache' },
-                });
-                if (cancelled || sequence !== requestSequence) return;
-
-                const results = Array.isArray(response.data?.data) ? response.data.data : [];
-
-                const prices = { ...lastKnownPricesRef.current }; // Start with last known good prices
-
-                results.forEach((result, index) => {
-                    const symbol = uniqueSymbols[index];
-                    const price = Number(result?.data?.price ?? result?.price);
-                    if (symbol && Number.isFinite(price) && price > 0) {
-                        prices[symbol] = price;
-                        lastKnownPricesRef.current[symbol] = price; // Persist for future fallback
-                    }
-                });
-
-                setLivePrices(prices);
+        const unsubscribe = subscribeToPricePoller(
+            symbols,
+            (prices) => {
+                if (cancelled) return;
+                const nextPrices = { ...lastKnownPricesRef.current, ...prices };
+                Object.assign(lastKnownPricesRef.current, prices);
+                setLivePrices(nextPrices);
                 setPricesUpdatedAt(Date.now());
-            } catch (e) {
-                console.error('Failed to fetch live prices:', e);
-                // On total failure, use last known prices so P/L doesn't show false 0%
-                if (!cancelled && sequence === requestSequence && Object.keys(lastKnownPricesRef.current).length > 0) {
+            },
+            () => {
+                if (!cancelled && Object.keys(lastKnownPricesRef.current).length > 0) {
                     setLivePrices({ ...lastKnownPricesRef.current });
                 }
-            } finally {
-                requestInFlight = false;
             }
-        };
+        );
 
-        // Fetch immediately and refresh once per second for visible live P/L.
-        fetchPrices();
-        const interval = setInterval(fetchPrices, 1000);
         return () => {
             cancelled = true;
-            clearInterval(interval);
+            unsubscribe();
         };
-    }, [portfolioHoldings]);
+    }, [portfolioSymbolsKey]);
 
     /**
      * Execute a buy transaction
