@@ -1,13 +1,20 @@
 const express = require('express');
 const { protect } = require('../middleware/authMiddleware');
-const { connectDB, isDatabaseConnected } = require('../config/db');
+const { connectDB, isDatabaseConnected, getDatabaseHealth, getRetryAfterSeconds } = require('../config/db');
 const tradingService = require('../services/tradingService');
 
 const router = express.Router();
 const requireDatabase = async (req, res, next) => {
     const connected = await connectDB();
     if (!connected || !isDatabaseConnected()) {
-        return res.status(503).json({ success: false, error: 'Persistent trading database is unavailable' });
+        const retryAfterSeconds = getRetryAfterSeconds();
+        res.set('Retry-After', String(retryAfterSeconds));
+        return res.status(503).json({
+            success: false,
+            error: 'Persistent trading database is unavailable',
+            code: 'DB_UNAVAILABLE',
+            retryAfterSeconds,
+        });
     }
     return next();
 };

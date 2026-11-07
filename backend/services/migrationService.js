@@ -4,7 +4,6 @@ const path = require('path');
 const migrationsDirectory = path.join(__dirname, '..', 'migrations');
 
 const runMigrations = async (client) => {
-    await client.query('CREATE EXTENSION IF NOT EXISTS pgcrypto');
     await client.query(`
         CREATE TABLE IF NOT EXISTS schema_migrations (
             version VARCHAR(255) PRIMARY KEY,

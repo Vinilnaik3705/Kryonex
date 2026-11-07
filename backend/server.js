@@ -9,7 +9,7 @@ const aiRoutes = require("./routes/aiRoutes");
 const coinLogos = require("./routes/coinLogos");
 const errorHandler = require("./middleware/errorHandler");
 const rateLimiter = require("./middleware/rateLimiter");
-const { connectDB, closeDB }= require("./config/db");
+const { connectDB, closeDB, getDatabaseHealth }= require("./config/db");
 const tradingRoutes = require("./routes/tradingRoutes");
 const websocketService = require("./services/websocketService");
 
@@ -53,6 +53,11 @@ app.get("/health", (req, res) => {
         status: "OK",
         timestamp: new Date().toISOString(),
         uptime: process.uptime()
+    });
+
+    app.get("/health/db", async (req, res) => {
+        await connectDB();
+        res.json(getDatabaseHealth());
     });
 });
 
