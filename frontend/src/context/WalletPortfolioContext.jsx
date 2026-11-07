@@ -82,7 +82,12 @@ const runPricePoll = async () => {
             signal: pricePoller.controller.signal,
         });
         const prices = {};
-        (Array.isArray(response.data?.data) ? response.data.data : []).forEach((result) => {
+        const priceResults = Array.isArray(response.data?.data)
+            ? response.data.data
+            : Array.isArray(response.data)
+                ? response.data
+                : [];
+        priceResults.forEach((result) => {
             const resultSymbol = result?.baseAsset || String(result?.symbol || '').replace(/USDT$/i, '');
             const price = Number(result?.data?.price ?? result?.price);
             if (resultSymbol && Number.isFinite(price) && price > 0) {
@@ -140,6 +145,18 @@ export const WalletPortfolioProvider = ({ children }) => {
         const nextHoldings = Array.isArray(state.portfolioHoldings) ? state.portfolioHoldings.map(toHolding) : [];
         setWalletBalance(Number.isFinite(Number(state.walletBalance)) ? Number(state.walletBalance) : INITIAL_BALANCE);
         setPortfolioHoldings(nextHoldings);
+        setLivePrices((currentPrices) => {
+            const seededPrices = { ...currentPrices };
+            nextHoldings.forEach((holding) => {
+                const symbol = normalizeDisplaySymbol(holding.symbol);
+                const currentPrice = Number(holding.currentPrice);
+                if (symbol && !Number.isFinite(seededPrices[symbol]) && Number.isFinite(currentPrice) && currentPrice > 0) {
+                    seededPrices[symbol] = currentPrice;
+                }
+            });
+            Object.assign(lastKnownPricesRef.current, seededPrices);
+            return seededPrices;
+        });
         localUpdatedAtRef.current = updatedAt;
         if (user?.id) saveLocalState(user.id, Number(state.walletBalance), nextHoldings, updatedAt);
     }, [user]);
@@ -152,10 +169,10 @@ export const WalletPortfolioProvider = ({ children }) => {
             apiClient.get('/trading/history', { headers }),
         ]);
         const state = stateResponse.data?.data || {};
-        const remoteUpdatedAt = Date.parse(state.updatedAt || state.lastSyncedAt || '') || 0;
-        if (remoteUpdatedAt >= localUpdatedAtRef.current) {
-            applyState(state, remoteUpdatedAt || Date.now());
-        }
+        const remoteUpdatedAt = Date.parse(state.updatedAt || state.lastSyncedAt || '') || Date.now();
+        // The database is authoritative. Local storage is only an immediate
+        // cache and must not prevent a successful server snapshot from rendering.
+        applyState(state, remoteUpdatedAt);
         setTradeHistory(Array.isArray(historyResponse.data?.data) ? historyResponse.data.data : []);
         setStateError('');
     }, [applyState, getAuthHeaders]);
