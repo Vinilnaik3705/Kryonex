@@ -493,7 +493,7 @@ const CandlestickChart = ({
 
                 // Use the backend gateway when available; REST polling remains the safe fallback.
                 const backendSocket = tryBackendWebSocket(
-                    `crypto:${cryptoSymbol}`,
+                    `crypto:${cryptoSymbol}:${timeframeConfig.streamInterval || timeframeConfig.interval}`,
                     handleLiveUpdate,
                     () => {}
                 );

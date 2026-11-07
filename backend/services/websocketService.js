@@ -7,10 +7,15 @@ class WebSocketService {
         this.clients = new Map(); // ws client -> Set of subscribed topics
         this.topicSubscribers = new Map(); // topic -> Set of ws clients
 
-        // Crypto WebSocket connections (symbol -> ws connection to Binance)
+        // Crypto WebSocket connections (symbol:interval -> ws connection to Binance)
         this.binanceConnections = new Map();
         this.reconnectAttempts = new Map();
         this.reconnectTimers = new Map();
+        this.intentionalBinanceClosures = new Set();
+        this.cryptoIntervals = new Set([
+            '1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h',
+            '6h', '8h', '12h', '1d', '3d', '1w', '1M',
+        ]);
     }
 
     /**
@@ -67,6 +72,11 @@ class WebSocketService {
             }
 
             if (action === 'subscribe') {
+                const topicParts = this.parseCryptoTopic(topic);
+                if (topicParts?.error) {
+                    ws.send(JSON.stringify({ error: topicParts.error }));
+                    return;
+                }
                 this.subscribe(ws, topic);
             } else if (action === 'unsubscribe') {
                 this.unsubscribe(ws, topic);
@@ -146,13 +156,13 @@ class WebSocketService {
      * Start ingestion pipeline (multiplexing external feed) for a topic
      */
     startIngestion(topic) {
-        const [assetType, symbol] = topic.split(':');
+        const [assetType, symbol, interval = '1m'] = topic.split(':');
         if (!assetType || !symbol) return;
 
         logger.info(`Starting ingestion pipeline for topic: ${topic}`);
 
         if (assetType.toLowerCase() === 'crypto') {
-            this.startCryptoFeed(symbol, topic);
+            this.startCryptoFeed(symbol, interval, topic);
         } else {
             logger.warn(`Asset type not supported by websocket service: ${assetType}`);
         }
@@ -162,42 +172,47 @@ class WebSocketService {
      * Stop ingestion pipeline for a topic when there are no more subscribers
      */
     stopIngestion(topic) {
-        const [assetType, symbol] = topic.split(':');
+        const [assetType, symbol, interval = '1m'] = topic.split(':');
         if (!assetType || !symbol) return;
 
         logger.info(`Stopping ingestion pipeline for topic: ${topic}`);
 
         if (assetType.toLowerCase() === 'crypto') {
             const cleanSymbol = symbol.toUpperCase();
-            const conn = this.binanceConnections.get(cleanSymbol);
-            if (conn) {
-                conn.close();
-                this.binanceConnections.delete(cleanSymbol);
-                logger.info(`Closed Binance stream connection for: ${cleanSymbol}`);
+            const streamKey = `${cleanSymbol}:${interval}`;
+            if (!this.hasCryptoSubscribers(streamKey, topic)) {
+                const conn = this.binanceConnections.get(streamKey);
+                if (conn) {
+                    this.intentionalBinanceClosures.add(streamKey);
+                    conn.close();
+                    this.binanceConnections.delete(streamKey);
+                    logger.info(`Closed Binance stream connection for: ${streamKey}`);
+                }
+                const reconnectTimer = this.reconnectTimers.get(streamKey);
+                if (reconnectTimer) clearTimeout(reconnectTimer);
+                this.reconnectTimers.delete(streamKey);
+                this.reconnectAttempts.delete(streamKey);
             }
-            const reconnectTimer = this.reconnectTimers.get(cleanSymbol);
-            if (reconnectTimer) clearTimeout(reconnectTimer);
-            this.reconnectTimers.delete(cleanSymbol);
-            this.reconnectAttempts.delete(cleanSymbol);
         }
     }
 
     /**
      * Ingestion pipeline: Binance WebSockets for Crypto
      */
-    startCryptoFeed(symbol, topic) {
+    startCryptoFeed(symbol, interval, topic) {
         const cleanSymbol = symbol.toUpperCase();
+        const streamKey = `${cleanSymbol}:${interval}`;
         // Check if already active
-        if (this.binanceConnections.has(cleanSymbol)) return;
+        if (this.binanceConnections.has(streamKey)) return;
 
-        const binanceUrl = `wss://stream.binance.com:9443/ws/${cleanSymbol.toLowerCase()}@kline_1m`;
+        const binanceUrl = `wss://stream.binance.com:9443/ws/${cleanSymbol.toLowerCase()}@kline_${interval}`;
         logger.info(`Opening Binance WebSocket connection: ${binanceUrl}`);
 
         try {
             const binanceWs = new WebSocket(binanceUrl);
 
             binanceWs.on('open', () => {
-                this.reconnectAttempts.delete(cleanSymbol);
+                this.reconnectAttempts.delete(streamKey);
             });
 
             binanceWs.on('message', (data) => {
@@ -215,45 +230,103 @@ class WebSocketService {
                         volume: parseFloat(kline.v),
                     };
 
-                    this.broadcast(topic, {
-                        type: 'live',
-                        topic,
-                        data: liveUpdate,
-                        timestamp: Date.now()
-                    });
+                    this.broadcastCryptoUpdate(streamKey, liveUpdate);
                 } catch (e) {
                     logger.error(`Binance data parse error: ${e.message}`);
                 }
             });
 
             binanceWs.on('error', (err) => {
+                if (this.intentionalBinanceClosures.has(streamKey)) return;
                 logger.error(`Binance stream connection error: ${err.message}`);
             });
 
             binanceWs.on('close', () => {
-                logger.info(`Binance stream connection closed for ${cleanSymbol}`);
+                const intentionalClose = this.intentionalBinanceClosures.delete(streamKey);
+                logger.info(`Binance stream connection closed for ${streamKey}`);
+                if (intentionalClose) return;
                 // Reconnect if there are still subscribers
-                if (this.topicSubscribers.has(topic)) {
-                    this.binanceConnections.delete(cleanSymbol);
-                    const attempts = this.reconnectAttempts.get(cleanSymbol) || 0;
+                const activeTopic = this.getCryptoTopicForStream(streamKey);
+                if (activeTopic) {
+                    this.binanceConnections.delete(streamKey);
+                    const attempts = this.reconnectAttempts.get(streamKey) || 0;
                     if (attempts >= 3) {
-                        logger.warn(`Stopping Binance reconnects for ${cleanSymbol} after ${attempts} failed attempts`);
+                        const delay = 60000;
+                        logger.warn(`Retrying Binance stream for ${streamKey} in ${delay}ms after ${attempts} failed attempts`);
+                        const timer = setTimeout(() => {
+                            this.reconnectTimers.delete(streamKey);
+                            this.startCryptoFeed(symbol, interval, activeTopic);
+                        }, delay);
+                        this.reconnectTimers.set(streamKey, timer);
                         return;
                     }
                     const delay = Math.min(3000 * (2 ** attempts), 30000);
-                    this.reconnectAttempts.set(cleanSymbol, attempts + 1);
-                    logger.info(`Reconnecting to Binance stream for ${cleanSymbol} in ${delay}ms...`);
+                    this.reconnectAttempts.set(streamKey, attempts + 1);
+                    logger.info(`Reconnecting to Binance stream for ${streamKey} in ${delay}ms...`);
                     const timer = setTimeout(() => {
-                        this.reconnectTimers.delete(cleanSymbol);
-                        this.startCryptoFeed(symbol, topic);
+                        this.reconnectTimers.delete(streamKey);
+                        this.startCryptoFeed(symbol, interval, activeTopic);
                     }, delay);
-                    this.reconnectTimers.set(cleanSymbol, timer);
+                    this.reconnectTimers.set(streamKey, timer);
                 }
             });
 
-            this.binanceConnections.set(cleanSymbol, binanceWs);
+            this.binanceConnections.set(streamKey, binanceWs);
         } catch (err) {
             logger.error(`Failed to connect to Binance socket: ${err.message}`);
+        }
+    }
+
+    parseCryptoTopic(topic) {
+        const [assetType, rawSymbol, interval = '1m', ...extra] = String(topic).split(':');
+        if (assetType?.toLowerCase() !== 'crypto') return null;
+        if (!rawSymbol || extra.length > 0) {
+            return { error: 'Invalid crypto topic' };
+        }
+
+        const symbol = rawSymbol.toUpperCase();
+        if (!/^[A-Z0-9]{2,15}$/.test(symbol)) {
+            return { error: 'Invalid crypto symbol' };
+        }
+        if (!this.cryptoIntervals.has(interval)) {
+            return { error: `Invalid crypto interval: ${interval}` };
+        }
+
+        return { symbol, interval };
+    }
+
+    getCryptoStreamKey(topic) {
+        const parsed = this.parseCryptoTopic(topic);
+        return parsed ? `${parsed.symbol}:${parsed.interval}` : null;
+    }
+
+    getCryptoTopicForStream(streamKey) {
+        for (const [topic, subscribers] of this.topicSubscribers) {
+            if (subscribers.size > 0 && this.getCryptoStreamKey(topic) === streamKey) {
+                return topic;
+            }
+        }
+        return null;
+    }
+
+    hasCryptoSubscribers(streamKey, excludedTopic = null) {
+        for (const [topic, subscribers] of this.topicSubscribers) {
+            if (topic !== excludedTopic && subscribers.size > 0 && this.getCryptoStreamKey(topic) === streamKey) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    broadcastCryptoUpdate(streamKey, data) {
+        for (const [topic, subscribers] of this.topicSubscribers) {
+            if (subscribers.size === 0 || this.getCryptoStreamKey(topic) !== streamKey) continue;
+            this.broadcast(topic, {
+                type: 'live',
+                topic,
+                data,
+                timestamp: Date.now()
+            });
         }
     }
 
