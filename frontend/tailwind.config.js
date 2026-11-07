@@ -22,6 +22,7 @@ export default {
         "text-main": "var(--color-text)",
         "text-muted": "var(--color-text-muted)",
         "text-dim": "var(--color-text-dim)",
+        "surface-1": "var(--color-surface-1)",
 
         // Brand tokens (static)
         brand: {

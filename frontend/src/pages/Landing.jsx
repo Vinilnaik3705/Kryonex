@@ -10,7 +10,6 @@ import {
 
 import AuroraBackground from '../components/ui/AuroraBackground';
 import TickerTape from '../components/ui/TickerTape';
-import AnimatedCounter from '../components/ui/AnimatedCounter';
 import Reveal from '../components/ui/Reveal';
 
 // Crypto-only demo data (NO stocks)
@@ -22,11 +21,11 @@ const DEMO_MARKETS = [
     { symbol: 'XRP', name: 'XRP', price: '0.5210', change: 3.1, up: true, color: '#23292F' },
 ];
 
-const STATS = [
-    { value: 450, suffix: '+', label: 'Crypto assets tracked', decimals: 0 },
-    { value: 99.98, suffix: '%', label: 'Real-time uptime', decimals: 2 },
-    { value: 2.1, suffix: 'M+', label: 'Trades simulated', decimals: 1 },
-    { value: 120, suffix: '+', label: 'Countries served', decimals: 0 },
+const TRUST_POINTS = [
+    { value: 'Live', label: 'market data' },
+    { value: 'Local-first', label: 'portfolio state' },
+    { value: 'USD + INR', label: 'currency support' },
+    { value: 'Supabase', label: 'secure sign-in' },
 ];
 
 const FEATURES = [
@@ -40,7 +39,7 @@ const FEATURES = [
 
 const STEPS = [
     { n: '01', title: 'Create your account', desc: 'Sign in securely in seconds with Google or GitHub. No paperwork, no waiting.' },
-    { n: '02', title: 'Explore live markets', desc: 'Browse 450+ cryptocurrencies with real-time prices, heatmaps, and AI insights.' },
+    { n: '02', title: 'Explore live markets', desc: 'Browse tracked cryptocurrencies with real-time prices, heatmaps, and AI insights.' },
     { n: '03', title: 'Trade risk-free', desc: 'Simulate orders, build a portfolio, and refine your strategy with zero exposure.' },
 ];
 
@@ -97,7 +96,7 @@ const NavItem = ({ label, target, onClick }) => (
         className="relative text-sm font-medium text-text-muted hover:text-text-main transition-colors group py-1"
     >
         {label}
-        <span className="absolute -bottom-0.5 left-0 h-px w-0 bg-brand-gradient transition-all duration-300 group-hover:w-full" />
+        <span className="absolute -bottom-0.5 left-0 h-px w-0 bg-accent transition-all duration-300 group-hover:w-full" />
     </button>
 );
 
@@ -134,9 +133,8 @@ const Landing = () => {
                 <div className="page-container relative flex items-center justify-between">
                     {/* Logo */}
                     <Link to="/" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="flex items-center gap-2.5 group">
-                        <div className="relative w-9 h-9 rounded-xl bg-brand-gradient flex items-center justify-center shadow-glow-soft group-hover:scale-105 transition-transform">
+                        <div className="relative w-9 h-9 rounded-xl bg-accent flex items-center justify-center group-hover:scale-105 transition-transform">
                             <span className="text-white font-bold text-lg font-heading">K</span>
-                            <span className="absolute inset-0 rounded-xl bg-brand-gradient blur-md opacity-40 -z-10" />
                         </div>
                         <span className="text-xl font-bold tracking-tighter font-heading">Kryonex</span>
                     </Link>
@@ -205,7 +203,7 @@ const Landing = () => {
 
             {/* ════════ HERO ════════ */}
             <header ref={heroRef} className="relative min-h-screen flex flex-col items-center justify-center pt-28 pb-16 overflow-hidden">
-                <AuroraBackground />
+                <AuroraBackground showGrid={true} orbs={false} />
 
                 <motion.div
                     style={{ y: heroY, opacity: heroOpacity, scale: heroScale }}
@@ -222,16 +220,16 @@ const Landing = () => {
                             <span className="absolute inline-flex h-full w-full rounded-full bg-success opacity-75 animate-ping" />
                             <span className="relative inline-flex rounded-full h-2 w-2 bg-success" />
                         </span>
-                        <span className="text-text-muted">Live crypto markets · Risk-free simulation</span>
+                        <span className="text-text-muted">Live crypto markets · paper trading</span>
                     </motion.div>
 
                     {/* Headline */}
                     <h1 className="font-heading font-bold tracking-tightest text-text-main text-[clamp(2.75rem,9vw,7.5rem)] leading-[0.95]">
                         <HeadlineLine delay={0.15}>
-                            <span className="text-gradient-animated">Precision</span> over
+                            <span className="text-accent">Read the market</span>
                         </HeadlineLine>
                         <HeadlineLine delay={0.3}>
-                            prediction.
+                            before you trade.
                         </HeadlineLine>
                     </h1>
 
@@ -242,8 +240,8 @@ const Landing = () => {
                         transition={{ duration: 0.6, delay: 0.45 }}
                         className="mt-7 text-lg md:text-xl text-text-muted max-w-2xl mx-auto leading-relaxed"
                     >
-                        Analyze the crypto market. Profit in both bull and bear phases. The
-                        high-performance trading simulation platform built for serious traders.
+                        A focused crypto simulator for testing ideas with live prices,
+                        clear charts, and no financial exposure.
                     </motion.p>
 
                     {/* CTAs */}
@@ -257,30 +255,27 @@ const Landing = () => {
                             to={user ? '/dashboard' : '/register'}
                             className="btn-primary px-7 py-3.5 rounded-full font-semibold flex items-center gap-2 group"
                         >
-                            Start trading now
+                            Open the simulator
                             <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
                         </Link>
                         <Link
                             to={user ? '/markets' : '/login'}
                             className="btn-secondary px-7 py-3.5 rounded-full font-semibold flex items-center gap-2"
                         >
-                            <Search size={16} /> Explore markets
+                            <Search size={16} /> View markets
                         </Link>
                     </motion.div>
 
-                    {/* Floating glass stat chips */}
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.7, delay: 0.8 }}
                         className="mt-14 grid grid-cols-2 md:grid-cols-3 gap-3 max-w-2xl mx-auto"
                     >
-                        {DEMO_MARKETS.slice(0, 3).map((m, i) => (
+                        {DEMO_MARKETS.slice(0, 3).map((m) => (
                             <motion.div
                                 key={m.symbol}
-                                animate={{ y: [0, -8, 0] }}
-                                transition={{ duration: 4 + i, repeat: Infinity, ease: 'easeInOut', delay: i * 0.5 }}
-                                className="glass-card rounded-2xl p-4 flex items-center gap-3 text-left"
+                                className="surface-card rounded-xl p-4 flex items-center gap-3 text-left"
                             >
                                 <CoinBadge symbol={m.symbol} color={m.color} />
                                 <div className="flex-1 min-w-0">
@@ -321,10 +316,10 @@ const Landing = () => {
             {/* ════════ STATS ════════ */}
             <section className="relative py-20 page-container">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                    {STATS.map((s, i) => (
+                    {TRUST_POINTS.map((s, i) => (
                         <Reveal key={s.label} index={i} className="text-center">
-                            <div className="font-heading font-bold text-4xl md:text-5xl tracking-tighter text-gradient">
-                                <AnimatedCounter value={s.value} suffix={s.suffix} decimals={s.decimals} />
+                            <div className="font-heading font-bold text-2xl md:text-3xl tracking-tight text-text-main">
+                                {s.value}
                             </div>
                             <div className="mt-2 text-sm text-text-muted">{s.label}</div>
                         </Reveal>
@@ -335,12 +330,12 @@ const Landing = () => {
             {/* ════════ FEATURES ════════ */}
             <section id="features" className="relative py-24 page-container">
                 <Reveal className="text-center max-w-2xl mx-auto mb-14">
-                    <span className="pill mb-5"><Sparkles size={13} className="text-brand-500" /> Features</span>
+                    <span className="eyebrow mb-5">The toolkit</span>
                     <h2 className="font-heading font-bold text-[clamp(2rem,5vw,3.5rem)] tracking-tighter leading-[1.05]">
-                        Everything you need to <span className="text-gradient">trade smarter</span>
+                        The essentials for <span className="text-accent">better decisions</span>
                     </h2>
                     <p className="mt-4 text-lg text-text-muted">
-                        Professional-grade tools, real-time data, and AI-powered insights — all in one beautifully designed platform.
+                        A small set of useful tools, connected to the market data you actually need.
                     </p>
                 </Reveal>
 
@@ -348,9 +343,7 @@ const Landing = () => {
                     {FEATURES.map((f, i) => (
                         <Reveal key={f.title} index={i}>
                             <div className="group relative surface-card rounded-3xl p-7 h-full hover:shadow-card-hover hover:-translate-y-1 transition-all duration-300 overflow-hidden">
-                                {/* hover glow */}
-                                <div className={`absolute -top-16 -right-16 w-40 h-40 rounded-full bg-gradient-to-br ${f.tint} opacity-0 group-hover:opacity-20 blur-3xl transition-opacity duration-500`} />
-                                <div className={`inline-flex p-3 rounded-2xl bg-gradient-to-br ${f.tint} text-white shadow-lg mb-5`}>
+                                <div className="inline-flex p-3 rounded-xl bg-surface-1 border border-border text-accent mb-5">
                                     <f.icon size={22} />
                                 </div>
                                 <h3 className="font-heading font-bold text-xl mb-2">{f.title}</h3>
@@ -370,7 +363,7 @@ const Landing = () => {
                     <Reveal>
                         <span className="pill mb-5"><TrendingUp size={13} className="text-brand-500" /> Live markets</span>
                         <h2 className="font-heading font-bold text-[clamp(2rem,5vw,3.5rem)] tracking-tighter leading-[1.05]">
-                            Real-time crypto, <span className="text-gradient">in focus</span>
+                            Real-time crypto, <span className="text-accent">in focus</span>
                         </h2>
                         <p className="mt-4 text-lg text-text-muted max-w-lg">
                             Track hundreds of cryptocurrencies with live prices, professional charts, and an AI analyst that explains the moves.
@@ -403,7 +396,7 @@ const Landing = () => {
                     <Reveal className="text-center max-w-2xl mx-auto mb-14">
                         <span className="pill mb-5"><Zap size={13} className="text-brand-500" /> How it works</span>
                         <h2 className="font-heading font-bold text-[clamp(2rem,5vw,3.5rem)] tracking-tighter leading-[1.05]">
-                            From zero to trading <span className="text-gradient">in minutes</span>
+                            From first login to <span className="text-accent">first position</span>
                         </h2>
                     </Reveal>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
@@ -412,8 +405,8 @@ const Landing = () => {
                         {STEPS.map((s, i) => (
                             <Reveal key={s.n} index={i} className="text-center relative">
                                 <div className="relative inline-flex items-center justify-center w-24 h-24 mx-auto mb-5">
-                                    <span className="absolute inset-0 rounded-full bg-brand-gradient-soft" />
-                                    <span className="relative font-heading font-bold text-3xl text-gradient">{s.n}</span>
+                                    <span className="absolute inset-0 rounded-full border border-border" />
+                                    <span className="relative font-heading font-bold text-3xl text-accent">{s.n}</span>
                                 </div>
                                 <h3 className="font-heading font-bold text-xl mb-2">{s.title}</h3>
                                 <p className="text-text-muted max-w-xs mx-auto">{s.desc}</p>
@@ -425,18 +418,18 @@ const Landing = () => {
 
             {/* ════════ AI ANALYST ════════ */}
             <section id="ai" className="relative py-24 overflow-hidden">
-                <div className="absolute inset-0 bg-brand-gradient-soft opacity-60" />
+                <div className="absolute inset-0 bg-surface-1" />
                 <div className="page-container relative grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
                     <Reveal className="order-2 lg:order-1">
                         <AiChatMock />
                     </Reveal>
                     <Reveal delay={0.15} className="order-1 lg:order-2">
-                        <span className="pill mb-5"><Cpu size={13} className="text-brand-500" /> Kryonex AI</span>
+                        <span className="eyebrow mb-5"><Cpu size={13} /> Kryonex AI</span>
                         <h2 className="font-heading font-bold text-[clamp(2rem,5vw,3.5rem)] tracking-tighter leading-[1.05]">
-                            Your personal <span className="text-gradient">AI analyst</span>
+                            A second opinion <span className="text-accent">for your thesis</span>
                         </h2>
                         <p className="mt-4 text-lg text-text-muted max-w-lg">
-                            Ask about any coin, get risk levels, technical read, and latest news impact — explained in plain language, in seconds.
+                            Ask about a coin and get a plain-language read on its technical setup, risk, and news context.
                         </p>
                         <div className="mt-6 grid grid-cols-2 gap-3 max-w-md">
                             {[
@@ -459,20 +452,18 @@ const Landing = () => {
             <section className="relative py-28 page-container">
                 <Reveal>
                     <div className="relative overflow-hidden rounded-[2rem] p-12 md:p-20 text-center">
-                        <div className="absolute inset-0 bg-brand-gradient" />
+                        <div className="absolute inset-0 bg-card border border-border" />
                         <div className="absolute inset-0 grid-overlay opacity-20" />
-                        <div className="absolute -top-20 -left-20 w-72 h-72 bg-white/15 rounded-full blur-3xl animate-aurora" />
-                        <div className="absolute -bottom-20 -right-20 w-72 h-72 bg-violet-400/30 rounded-full blur-3xl animate-aurora-slow" />
                         <div className="relative">
-                            <h2 className="font-heading font-bold text-[clamp(2rem,6vw,4rem)] tracking-tighter text-white leading-[1.05]">
-                                Start trading smarter,<br />risk-free, today.
+                            <h2 className="font-heading font-bold text-[clamp(2rem,6vw,4rem)] tracking-tighter text-text-main leading-[1.05]">
+                                Test the idea<br />before the money.
                             </h2>
-                            <p className="mt-5 text-lg text-white/85 max-w-xl mx-auto">
-                                Join thousands of traders mastering crypto markets with Kryonex.
+                            <p className="mt-5 text-lg text-text-muted max-w-xl mx-auto">
+                                Build a portfolio, watch it move, and learn from every decision.
                             </p>
                             <Link
                                 to={user ? '/dashboard' : '/register'}
-                                className="mt-9 inline-flex items-center gap-2 bg-white text-brand-700 hover:bg-white/90 px-8 py-4 rounded-full font-bold text-lg shadow-xl transition-all hover:scale-[1.03] active:scale-[0.98]"
+                                className="mt-9 inline-flex items-center gap-2 btn-primary px-8 py-4 rounded-xl font-bold text-lg"
                             >
                                 Get started free <ArrowRight size={20} />
                             </Link>
@@ -511,7 +502,7 @@ const MarketPreviewCard = () => {
     return (
         <div className="relative">
             {/* glow */}
-            <div className="absolute -inset-4 bg-brand-gradient opacity-10 blur-3xl rounded-[2.5rem]" />
+            <div className="absolute -inset-2 border border-accent/20 rounded-[2.5rem]" />
             <div className="relative surface-card rounded-3xl p-6 shadow-card-hover">
                 <div className="flex items-center justify-between mb-5">
                     <div className="flex items-center gap-2.5">
@@ -581,10 +572,10 @@ const MarketPreviewCard = () => {
 const AiChatMock = () => {
     return (
         <div className="relative">
-            <div className="absolute -inset-4 bg-brand-gradient opacity-10 blur-3xl rounded-[2.5rem]" />
+            <div className="absolute -inset-2 border border-accent/20 rounded-[2.5rem]" />
             <div className="relative surface-card rounded-3xl p-6 shadow-card-hover">
                 <div className="flex items-center gap-2.5 mb-5 pb-4 border-b border-border">
-                    <div className="w-9 h-9 rounded-xl bg-brand-gradient flex items-center justify-center text-white">
+                    <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center text-white">
                         <Cpu size={18} />
                     </div>
                     <div>
@@ -600,7 +591,7 @@ const AiChatMock = () => {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.5 }}
-                    className="ml-auto max-w-[80%] bg-brand-gradient text-white rounded-2xl rounded-tr-sm px-4 py-2.5 text-sm mb-3"
+                    className="ml-auto max-w-[80%] bg-accent text-white rounded-2xl rounded-tr-sm px-4 py-2.5 text-sm mb-3"
                 >
                     Analyze BTC. Should I be concerned short-term?
                 </motion.div>
@@ -655,7 +646,7 @@ const Footer = ({ user }) => {
                     {/* Brand */}
                     <div className="col-span-2 md:col-span-1 space-y-5">
                         <Link to="/" className="flex items-center gap-2.5">
-                            <div className="w-9 h-9 rounded-xl bg-brand-gradient flex items-center justify-center shadow-glow-soft">
+                            <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center">
                                 <span className="text-white font-bold text-lg font-heading">K</span>
                             </div>
                             <span className="text-xl font-bold tracking-tighter font-heading">Kryonex</span>

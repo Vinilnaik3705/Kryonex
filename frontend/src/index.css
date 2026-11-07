@@ -11,8 +11,8 @@
     --color-text-muted: #a4abb7;
     --color-text-dim: #68717f;
     --color-border: rgba(255, 255, 255, 0.09);
-    --color-accent: #7c5cff;
-    --color-accent-2: #a56bff;
+    --color-accent: #2f9c95;
+    --color-accent-2: #6bb7a9;
     --color-card: #15181d;
     --color-hover: #1d2128;
     --color-surface-1: rgba(255, 255, 255, 0.045);
@@ -169,6 +169,17 @@
     border: 1px solid var(--color-border);
     background: var(--color-surface-1);
     color: var(--color-text-muted);
+  }
+
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--color-accent);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
   }
 
   /* ── Stat-card accent borders (preserved, retuned) ── */
