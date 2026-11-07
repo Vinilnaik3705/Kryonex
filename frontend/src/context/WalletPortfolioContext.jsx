@@ -1,4 +1,4 @@
-/* eslint-disable react-refresh/only-export-components, react-hooks/set-state-in-effect */
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import apiClient from '../lib/apiClient';
 import { useAuth } from './AuthContext';
@@ -135,11 +135,17 @@ export const WalletPortfolioProvider = ({ children }) => {
     const [stateError, setStateError] = useState('');
     const localUpdatedAtRef = useRef(initial.updatedAt);
     const lastKnownPricesRef = useRef({});
+    const getTokenRef = useRef(getToken);
+    const userId = user?.id;
+
+    useEffect(() => {
+        getTokenRef.current = getToken;
+    }, [getToken]);
 
     const getAuthHeaders = useCallback(async () => {
-        const token = await getToken?.();
+        const token = await getTokenRef.current?.();
         return token ? { Authorization: `Bearer ${token}` } : {};
-    }, [getToken]);
+    }, []);
 
     const applyState = useCallback((state, updatedAt) => {
         const nextHoldings = Array.isArray(state.portfolioHoldings) ? state.portfolioHoldings.map(toHolding) : [];
@@ -158,8 +164,8 @@ export const WalletPortfolioProvider = ({ children }) => {
             return seededPrices;
         });
         localUpdatedAtRef.current = updatedAt;
-        if (user?.id) saveLocalState(user.id, Number(state.walletBalance), nextHoldings, updatedAt);
-    }, [user]);
+        if (userId) saveLocalState(userId, Number(state.walletBalance), nextHoldings, updatedAt);
+    }, [userId]);
 
     const refreshState = useCallback(async () => {
         const headers = await getAuthHeaders();
@@ -178,11 +184,12 @@ export const WalletPortfolioProvider = ({ children }) => {
     }, [applyState, getAuthHeaders]);
 
     useEffect(() => {
-        if (!user?.id) {
+        if (!userId) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setIsHydrating(false);
             return undefined;
         }
-        const local = readLocalState(user.id);
+        const local = readLocalState(userId);
         localUpdatedAtRef.current = local.updatedAt;
         setWalletBalance(local.walletBalance);
         setPortfolioHoldings(local.portfolioHoldings.map(toHolding));
@@ -197,7 +204,7 @@ export const WalletPortfolioProvider = ({ children }) => {
             if (!cancelled) setIsHydrating(false);
         });
         return () => { cancelled = true; };
-    }, [user?.id, refreshState]);
+    }, [userId, refreshState]);
 
     const submitTrade = useCallback(async (symbol, quantity, price, type) => {
         try {
