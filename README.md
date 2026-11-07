@@ -32,7 +32,7 @@ Kryonex is a high-performance, real-time trading simulation platform designed to
 ## 📋 Prerequisites
 
 -   [Node.js](https://nodejs.org/) (v18 or higher)
--   [MongoDB](https://www.mongodb.com/) (Local or Atlas)
+-   [PostgreSQL](https://www.postgresql.org/) (Local or hosted)
 -   [Git](https://git-scm.com/)
 
 ## 🔧 Getting Started
