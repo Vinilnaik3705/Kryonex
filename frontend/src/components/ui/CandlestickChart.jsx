@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createChart, CandlestickSeries, HistogramSeries, LineSeries } from 'lightweight-charts';
-import apiClient from '../../lib/apiClient';
 import { subscribeCryptoPrice } from '../../hooks/useCryptoPrice';
 import { formatPrice as smartFormatPrice } from '../../utils/formatPrice';
 
@@ -177,22 +176,30 @@ const tryBackendWebSocket = (topic, onLiveUpdate, onFallback) => {
     }
 
     let stopped = false;
-    let fallbackStarted = false;
     let ws = null;
     let watchdog = null;
+    let reconnectTimer = null;
+    let reconnectDelay = 1000;
     let lastLiveMessageAt = Date.now();
 
-    const startFallback = () => {
-        if (stopped || fallbackStarted) return;
-        fallbackStarted = true;
+    const scheduleReconnect = () => {
+        if (stopped || reconnectTimer) return;
         onFallback();
+        reconnectTimer = window.setTimeout(() => {
+            reconnectTimer = null;
+            connect();
+        }, reconnectDelay);
+        reconnectDelay = Math.min(reconnectDelay * 2, 30000);
     };
 
-    try {
+    const connect = () => {
+        if (stopped) return;
+        try {
         ws = new WebSocket(wsUrl);
         ws.onopen = () => {
             if (stopped) return;
             lastLiveMessageAt = Date.now();
+            if (watchdog) window.clearInterval(watchdog);
             ws.send(JSON.stringify({ action: 'subscribe', topic }));
         };
         ws.onmessage = (event) => {
@@ -201,32 +208,41 @@ const tryBackendWebSocket = (topic, onLiveUpdate, onFallback) => {
                 const message = JSON.parse(event.data);
                 if (message.type === 'live' && message.topic === topic && message.data) {
                     lastLiveMessageAt = Date.now();
+                    reconnectDelay = 1000;
                     onLiveUpdate(message.data);
                 }
             } catch (error) {
                 console.error('Error parsing backend WS message:', error);
             }
         };
-        ws.onerror = () => startFallback();
-        ws.onclose = () => startFallback();
+        ws.onerror = () => {
+            if (!stopped) scheduleReconnect();
+        };
+        ws.onclose = () => {
+            if (!stopped) scheduleReconnect();
+        };
 
         watchdog = window.setInterval(() => {
             if (!stopped && ws?.readyState === WebSocket.OPEN && Date.now() - lastLiveMessageAt > 12000) {
-                startFallback();
                 ws.close();
             }
         }, 5000);
-    } catch (error) {
-        console.warn('Failed to initialize backend WebSocket:', error);
-        startFallback();
-    }
+        } catch (error) {
+            console.warn('Failed to initialize backend WebSocket:', error);
+            scheduleReconnect();
+        }
+    };
+
+    connect();
 
     return {
         close: () => {
             stopped = true;
             if (watchdog) window.clearInterval(watchdog);
+            if (reconnectTimer) window.clearTimeout(reconnectTimer);
             ws?.close();
         },
+        getLastLiveMessageAt: () => lastLiveMessageAt,
     };
 };
 
@@ -335,6 +351,8 @@ const CandlestickChart = ({
             ? chart.addSeries(HistogramSeries, {
                 color: 'rgba(38, 166, 154, 0.35)',
                 priceFormat: { type: 'volume' },
+                lastValueVisible: false,
+                priceLineVisible: false,
                 priceScaleId: 'volume',
                 scaleMargins: {
                     top: 0.8,
@@ -502,6 +520,7 @@ const CandlestickChart = ({
                 // Subscribe to the shared price poller (8s, deduplicated, back-off) as REST fallback
                 const unsubscribeSharedPrice = subscribeCryptoPrice(assetSymbol, (priceState) => {
                     if (isStaleRequest(requestId)) return;
+                    if (Date.now() - (backendSocket?.getLastLiveMessageAt?.() || 0) < 10000) return;
                     const price = priceState.price;
                     if (!Number.isFinite(price)) return;
                     const base = rawCryptoCandlesRef.current.at(-1) || nextCandles.at(-1);
@@ -541,6 +560,8 @@ const CandlestickChart = ({
             requestIdRef.current += 1;
             cleanupRealtime();
         };
+    // The realtime callback is intentionally captured for the active chart request.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [assetSymbol, timeframe, historyCacheKey]);
 
     useEffect(() => {

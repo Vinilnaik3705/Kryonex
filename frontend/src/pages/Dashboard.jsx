@@ -11,7 +11,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import MarketToggle from '../components/ui/MarketToggle';
 import CryptoChatbot from '../components/CryptoChatbot';
 import { useCurrency } from '../context/CurrencyContext';
-import { formatAmount } from '../utils/formatCurrency';
+import { formatAmount, formatSignedAmount } from '../utils/formatCurrency';
 
 const ASSET_COLORS = {
     'BTC': '#F7931A', 'ETH': '#3B82F6', 'SOL': '#9333EA', 'BNB': '#f0b90b',
@@ -47,7 +47,7 @@ function getTimeAgo(timestamp) {
 
 export default function Dashboard() {
     const navigate = useNavigate();
-    const { walletBalance, calculatePortfolioValue, calculateTotalPnL, getHoldingsWithValues } = useWalletAndPortfolio();
+    const { walletBalance, calculatePortfolioValue, calculateTotalPnL, getHoldingsWithValues, isHydrating, pricesReady } = useWalletAndPortfolio();
         const { currency, convert } = useCurrency();
     const { data: marketData = [], isLoading: loading } = useQuery({
         queryKey: ['dashboard-market'],
@@ -77,13 +77,14 @@ export default function Dashboard() {
     });
 
     // Calculate values
-    const portfolioValue = calculatePortfolioValue();
-    const totalPnL = calculateTotalPnL();
-    const totalAssets = walletBalance + portfolioValue;
-    const pnlPercent = totalAssets > 0 ? (totalPnL / (totalAssets - totalPnL)) * 100 : 0;
-
     // Build data from real holdings
     const allHoldings = getHoldingsWithValues();
+    const portfolioValue = calculatePortfolioValue();
+    const totalPnL = calculateTotalPnL();
+    const totalCostBasis = allHoldings.reduce((total, holding) => total + holding.costBasis, 0);
+    const pnlPercent = totalCostBasis > 0 ? (totalPnL / totalCostBasis) * 100 : 0;
+    const accountReady = !isHydrating;
+    const metricsReady = accountReady && pricesReady;
 
     return (
         <MainLayout>
@@ -108,7 +109,7 @@ export default function Dashboard() {
                             AVAILABLE BALANCE
                         </div>
                         <div className="text-[22px] font-extrabold text-text-main font-mono price-mono tracking-tight">
-                            {formatAmount(convert(walletBalance), currency)}
+                            {accountReady ? formatAmount(convert(walletBalance), currency) : '—'}
                         </div>
                         <div className="text-[11px] text-brand-600 mt-1 font-bold">Cash ready</div>
                     </div>
@@ -120,7 +121,7 @@ export default function Dashboard() {
                             PORTFOLIO VALUE
                         </div>
                         <div className="text-[22px] font-extrabold text-text-main font-mono price-mono tracking-tight">
-                            {formatAmount(convert(portfolioValue), currency)}
+                            {metricsReady ? formatAmount(convert(portfolioValue), currency) : '—'}
                         </div>
                         <div className="text-[11px] text-success mt-1 font-bold">Holdings active</div>
                     </div>
@@ -132,10 +133,10 @@ export default function Dashboard() {
                             TOTAL P&L
                         </div>
                         <div className="text-[22px] font-extrabold font-mono price-mono tracking-tight" style={{ color: totalPnL >= 0 ? '#10B981' : '#F43F5E' }}>
-                            {totalPnL >= 0 ? '+' : ''}{formatAmount(convert(totalPnL), currency)}
+                            {metricsReady ? formatSignedAmount(convert(totalPnL), currency) : '—'}
                         </div>
                         <div className="text-[11px] mt-1 font-bold" style={{ color: totalPnL >= 0 ? '#10B981' : '#F43F5E' }}>
-                            {totalPnL >= 0 ? '↑' : '↓'} {pnlPercent.toFixed(2)}%
+                            {metricsReady ? `${pnlPercent < 0 ? '↓' : '↑'} ${Object.is(pnlPercent, -0) ? '0.00' : pnlPercent.toFixed(2)}%` : '—'}
                         </div>
                     </div>
 
@@ -261,9 +262,9 @@ export default function Dashboard() {
                                                     </div>
                                                 </div>
                                                 <div className="text-right">
-                                                    <span className="font-bold text-text-main font-mono price-mono text-[13px] block">{formatAmount(convert(item.currentValue), currency)}</span>
+                                                    <span className="font-bold text-text-main font-mono price-mono text-[13px] block">{metricsReady ? formatAmount(convert(item.currentValue), currency) : '—'}</span>
                                                     <div className={`font-mono price-mono font-bold text-[10px] flex justify-end gap-1 mt-0.5 ${isProfit ? 'text-success' : 'text-danger'}`}>
-                                                        {isProfit ? '+' : ''}{item.pnlPercent.toFixed(1)}%
+                                                        {metricsReady ? `${item.pnlPercent < 0 ? '-' : '+'}${Object.is(item.pnlPercent, -0) ? '0.00' : item.pnlPercent.toFixed(2)}%` : '—'}
                                                     </div>
                                                 </div>
                                             </div>

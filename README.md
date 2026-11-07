@@ -64,9 +64,10 @@ Kryonex is a high-performance, real-time trading simulation platform designed to
 
 ## 💾 Trading-state persistence
 
-- Signed-in wallet balances, holdings, and trade history sync through `/api/simulation/state`.
-- Configure `DATABASE_URL` for durable multi-instance/production storage.
-- If PostgreSQL is unavailable locally, the backend uses the ignored file `backend/data/simulation-state.json` instead of an in-memory store, so trades survive a backend restart.
+- Signed-in trading state is stored in PostgreSQL tables managed by versioned migrations.
+- Run `cd backend && npm run migrate` after configuring `DATABASE_URL`.
+- Wallets, holdings, orders, and permanent trade history are served through `/api/trading`.
+- PostgreSQL is required for authoritative trading operations; the application does not fall back to browser or JSON state for trades.
 - Set the frontend deployment variable `VITE_API_BASE_URL` to the backend origin, for example `https://your-backend.example.com` (do not include `/api`; the app adds it).
 
 The repository does not include `.env`, `node_modules`, build output, runtime logs, or local simulation data.

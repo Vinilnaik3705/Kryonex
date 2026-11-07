@@ -26,3 +26,15 @@ export function formatAmount(value, currency) {
     return symbol + n.toFixed(10).replace(/0+$/, '');
   }
 }
+
+export function formatSignedAmount(value, currency) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || Object.is(numeric, -0) || numeric === 0) {
+    return currency === 'INR' ? '₹0.00' : '$0.00';
+  }
+  const sign = numeric < 0 ? '-' : '+';
+  const symbol = currency === 'INR' ? '₹' : '$';
+  const absolute = Math.abs(numeric);
+  const decimals = absolute >= 0.01 ? 2 : 4;
+  return `${sign}${symbol}${absolute.toFixed(decimals)}`;
+}

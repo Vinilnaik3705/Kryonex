@@ -6,11 +6,11 @@ const compression = require("compression");
 const cryptoRoutes = require("./routes/cryptoRoutes");
 const newsRoutes = require("./routes/newsRoutes");
 const aiRoutes = require("./routes/aiRoutes");
-const simulationRoutes = require("./routes/simulationRoutes");
 const coinLogos = require("./routes/coinLogos");
 const errorHandler = require("./middleware/errorHandler");
 const rateLimiter = require("./middleware/rateLimiter");
-const { connectDB }= require("./config/db");
+const { connectDB, closeDB }= require("./config/db");
+const tradingRoutes = require("./routes/tradingRoutes");
 const websocketService = require("./services/websocketService");
 
 const app = express();
@@ -30,7 +30,7 @@ const corsOptions = {
         ...configuredOrigins
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "Cache-Control", "Pragma"],
+    allowedHeaders: ["Content-Type", "Authorization", "Cache-Control", "Pragma", "Idempotency-Key"],
     credentials: true
 };
 
@@ -44,7 +44,7 @@ app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: false, limit: '100kb' }));
 
 
-connectDB();
+const databaseReady = connectDB();
 
 app.use(rateLimiter);
 
@@ -65,14 +65,14 @@ app.get("/api", (req, res) => {
         success: true,
         name: "Kryonex API",
         health: "/health",
-        endpoints: ["/api/crypto", "/api/news", "/api/simulation", "/api/ai"],
+        endpoints: ["/api/crypto", "/api/news", "/api/trading", "/api/ai"],
     });
 });
 
 app.use("/api/crypto", cryptoRoutes);
 app.use("/api/news", newsRoutes);
 app.use("/api/ai", aiRoutes);
-app.use("/api/simulation", simulationRoutes);
+app.use("/api/trading", tradingRoutes);
 app.use("/api/coin-logos", coinLogos);
 app.use("/api/auth", require("./routes/authRoutes"));
 
@@ -87,17 +87,23 @@ app.use(errorHandler);
 
 if (require.main === module && !process.env.VERCEL) {
     const http = require("http");
-    const server = http.createServer(app);
-
-    // Initialize unified WebSocket gateway
-    websocketService.init(server);
-
-    server.on("error", (error) => {
-        console.error(`HTTP server error: ${error.message}`);
-    });
-
-    server.listen(PORT, () => {
-        console.log(`Server running on port ${PORT}`);
+    databaseReady.finally(() => {
+        const server = http.createServer(app);
+        websocketService.init(server);
+        server.on("error", (error) => {
+            console.error(`HTTP server error: ${error.message}`);
+        });
+        server.listen(PORT, () => {
+            console.log(`Server running on port ${PORT}`);
+        });
+        const shutdown = async () => {
+            server.close(async () => {
+                await closeDB();
+                process.exit(0);
+            });
+        };
+        process.once('SIGINT', shutdown);
+        process.once('SIGTERM', shutdown);
     });
 }
 

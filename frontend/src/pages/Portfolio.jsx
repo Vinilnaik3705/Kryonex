@@ -5,7 +5,7 @@ import { Briefcase, TrendingUp, Wallet, ArrowUpRight, TrendingDown, Activity } f
 import BentoCard from '../components/ui/BentoCard';
 import useWalletAndPortfolio from '../hooks/useWalletAndPortfolio';
 import { useCurrency } from '../context/CurrencyContext';
-import { formatAmount } from '../utils/formatCurrency';
+import { formatAmount, formatSignedAmount } from '../utils/formatCurrency';
 import CoinIcon from '../components/ui/CoinIcon';
 
 const ASSET_COLORS = {
@@ -20,7 +20,7 @@ const getAssetColor = (symbol) => {
 };
 
 export default function Portfolio() {
-    const { getHoldingsWithValues, calculatePortfolioValue, calculateTotalPnL, pricesUpdatedAt } = useWalletAndPortfolio();
+    const { getHoldingsWithValues, calculatePortfolioValue, calculateTotalPnL, pricesUpdatedAt, isHydrating, pricesReady } = useWalletAndPortfolio();
     const { currency, convert } = useCurrency();
     const [clock, setClock] = useState(0);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -43,7 +43,9 @@ export default function Portfolio() {
     const filteredHoldings = allHoldings.filter(item => item.type === 'crypto');
     const totalValue = calculatePortfolioValue();
     const totalPnL = calculateTotalPnL();
-    const totalPnLPercent = totalValue > 0 ? (totalPnL / (totalValue - totalPnL)) * 100 : 0;
+    const totalCostBasis = allHoldings.reduce((total, holding) => total + holding.costBasis, 0);
+    const totalPnLPercent = totalCostBasis > 0 ? (totalPnL / totalCostBasis) * 100 : 0;
+    const metricsReady = !isHydrating && pricesReady;
 
     const pieData = filteredHoldings.map(item => ({
         name: item.symbol,
@@ -79,12 +81,12 @@ export default function Portfolio() {
                                 <span className="th-label text-[10px]">Total Balance</span>
                             </div>
                             <h1 className="text-2xl sm:text-3xl font-extrabold font-mono price-mono text-text-main tracking-tight">
-                                {formatAmount(convert(totalValue), currency)}
+                                {metricsReady ? formatAmount(convert(totalValue), currency) : '—'}
                             </h1>
                             <div className="mt-4 flex items-center gap-2.5">
                                 <span className={`flex items-center ${totalPnL >= 0 ? 'text-success bg-success/[0.12]' : 'text-danger bg-danger/[0.12]'} px-2.5 py-1 rounded-lg text-[12px] sm:text-[13px] font-mono price-mono font-bold`}>
                                     {totalPnL >= 0 ? <ArrowUpRight size={14} className="mr-0.5" /> : <TrendingDown size={14} className="mr-0.5" />}
-                                    {totalPnL >= 0 ? '+' : ''}{totalPnLPercent.toFixed(2)}%
+                                    {metricsReady ? `${totalPnLPercent < 0 ? '-' : '+'}${Object.is(totalPnLPercent, -0) ? '0.00' : totalPnLPercent.toFixed(2)}%` : '—'}
                                 </span>
                                 <span className="text-[11px] text-text-dim font-medium">Unrealized P/L</span>
                             </div>
@@ -193,8 +195,8 @@ export default function Portfolio() {
                                             </div>
                                         </div>
                                         <div className={`text-right ${h.pnl >= 0 ? 'text-success' : 'text-danger'}`}>
-                                            <p className="font-bold font-mono text-sm">{h.pnl >= 0 ? '+' : ''}{formatAmount(convert(h.pnl), currency)}</p>
-                                            <p className="text-[10px] font-bold opacity-80">{h.pnlPercent >= 0 ? '+' : ''}{h.pnlPercent.toFixed(2)}%</p>
+                                            <p className="font-bold font-mono text-sm">{metricsReady ? formatSignedAmount(convert(h.pnl), currency) : '—'}</p>
+                                            <p className="text-[10px] font-bold opacity-80">{metricsReady ? `${h.pnlPercent < 0 ? '-' : '+'}${Object.is(h.pnlPercent, -0) ? '0.00' : h.pnlPercent.toFixed(2)}%` : '—'}</p>
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4 pt-3 border-t border-border">
@@ -204,11 +206,11 @@ export default function Portfolio() {
                                         </div>
                                         <div>
                                             <p className="text-[9px] font-bold text-text-dim uppercase tracking-widest mb-1">Current</p>
-                                            <p className="font-mono text-xs text-text-muted">{formatAmount(convert(h.currentPrice), currency)}</p>
+                                            <p className="font-mono text-xs text-text-muted">                                            {metricsReady ? formatAmount(convert(h.currentPrice), currency) : '—'}</p>
                                         </div>
                                         <div className="col-span-2">
                                             <p className="text-[9px] font-bold text-text-dim uppercase tracking-widest mb-1">Market Value</p>
-                                            <p className="font-mono text-sm text-text-main font-bold">{formatAmount(convert(h.currentValue), currency)}</p>
+                                            <p className="font-mono text-sm text-text-main font-bold">                                            {metricsReady ? formatAmount(convert(h.currentValue), currency) : '—'}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -275,7 +277,7 @@ const PortfolioRow = ({ item }) => {
                 </td>
                 <td className={`text-right py-4 px-3 ${item.pnl >= 0 ? 'text-success' : 'text-danger'}`}>
                     <div className="flex flex-col items-end">
-                        <span className="font-bold font-mono price-mono text-[13px]">{item.pnl >= 0 ? '+' : ''}{formatAmount(convert(item.pnl), currency)}</span>
+                        <span className="font-bold font-mono price-mono text-[13px]">{formatSignedAmount(convert(item.pnl), currency)}</span>
                         <span className={`text-[10px] font-bold mt-1 px-1.5 py-0.5 rounded ${item.pnlPercent >= 0 ? 'bg-success/[0.1]' : 'bg-danger/[0.1]'}`}>
                             {item.pnlPercent >= 0 ? '+' : ''}{item.pnlPercent.toFixed(2)}%
                         </span>

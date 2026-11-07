@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+/* eslint-disable react-hooks/set-state-in-effect */
+import { useState, useEffect, useRef } from 'react';
 import apiClient from '../lib/apiClient';
 
 /**
@@ -20,7 +21,7 @@ import apiClient from '../lib/apiClient';
 
 // ── Module-level singleton state ──────────────────────────────────────
 
-const BASE_DELAY = 8_000;
+const BASE_DELAY = 4_000;
 
 /** @type {Map<string, SymbolEntry>} */
 const symbols = new Map();
@@ -209,4 +210,3 @@ export function subscribeCryptoPrice(symbol, callback) {
     subscribe(sym, callback);
     return () => unsubscribe(sym, callback);
 }
-

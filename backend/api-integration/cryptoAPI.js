@@ -36,7 +36,7 @@ class CryptoAPI {
         // History: 30s (chart data, less critical)
         // Search: 60s (rarely changes)
         this.cacheTTL = {
-            price: 10,      // Individual price lookups (10s to reduce Binance pressure)
+            price: 3,
             market: 5,      // Market list (top coins, trending)
             history: 30,    // Chart/kline history
             search: 60      // Symbol search results
@@ -46,7 +46,7 @@ class CryptoAPI {
         // In-memory price cache: Map<symbol, { data: object, timestamp: number }>
         // TTL: 10 seconds per symbol. Serves fresh data or stale on external API failures.
         this.priceCache = new Map();
-        this.PRICE_CACHE_TTL_MS = 10000;
+        this.PRICE_CACHE_TTL_MS = 3000;
         this.http = axios.create({
             baseURL: this.baseURL,
             timeout: 3500,

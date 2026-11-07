@@ -129,6 +129,7 @@ const protect = async (req, res, next) => {
         req.auth = {
             userId: decoded.sub,
             email: decoded.email,
+            name: decoded.user_metadata?.full_name || decoded.user_metadata?.name,
             role: decoded.role || decoded.user_role || decoded.user_metadata?.role
         };
         

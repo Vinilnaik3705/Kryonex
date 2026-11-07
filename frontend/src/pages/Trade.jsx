@@ -530,7 +530,7 @@ export default function Trade() {
         setConfigs(prev => prev.map(c => c.id === updated.id ? updated : c));
     };
 
-    const handleBuyNow = () => {
+    const handleBuyNow = async () => {
         setBuyError('');
         const qty = parseFloat(quantity);
         if (!qty || qty <= 0) {
@@ -541,24 +541,18 @@ export default function Trade() {
         const currentAsset = configs[0].assetId;
         const totalCost = currentPrice * qty;
 
-        // Check if user has sufficient balance
-        if (totalCost > walletBalance) {
-            setBuyError(`Insufficient balance. Need ${formatAmount(convert(totalCost), currency)}, have ${formatAmount(convert(walletBalance), currency)}`);
-            return;
-        }
+        const result = await buyAsset(currentAsset, qty, currentPrice, 'crypto');
 
-        const success = buyAsset(currentAsset, qty, currentPrice, 'crypto');
-
-        if (success) {
+        if (result.success) {
             // Success - clear form and show feedback
             setQuantity('');
             alert(`✓ Successfully purchased ${qty} ${currentAsset.toUpperCase()} @ ${formatAmount(convert(currentPrice), currency)}\nWallet balance reduced by ${formatAmount(convert(totalCost), currency)}`);
         } else {
-            setBuyError('Transaction failed. Please try again.');
+            setBuyError(result.error || 'Transaction failed. Please try again.');
         }
     };
 
-    const handleQuickTrade = (side, amountInUsdt) => {
+    const handleQuickTrade = async (side, amountInUsdt) => {
         const tradePrice = Number(livePrice || assetSnapshot.price || currentPrice || 0);
         if (!tradePrice || amountInUsdt <= 0) return false;
 
@@ -566,22 +560,22 @@ export default function Trade() {
         const tradeSymbol = primarySymbol;
 
         if (side === 'sell') {
-            const success = sellAsset(tradeSymbol, tradeQuantity, tradePrice, 'crypto');
-            if (!success) {
-                setBuyError(`Not enough ${tradeSymbol} in your holdings to sell that amount.`);
+            const result = await sellAsset(tradeSymbol, tradeQuantity, tradePrice, 'crypto');
+            if (!result.success) {
+                setBuyError(result.error || `Not enough ${tradeSymbol} in your holdings to sell that amount.`);
             } else {
                 setBuyError('');
             }
-            return success;
+            return result.success;
         }
 
-        const success = buyAsset(tradeSymbol, tradeQuantity, tradePrice, 'crypto');
-        if (!success) {
-            setBuyError('Insufficient balance for this trade.');
+        const result = await buyAsset(tradeSymbol, tradeQuantity, tradePrice, 'crypto');
+        if (!result.success) {
+            setBuyError(result.error || 'Insufficient balance for this trade.');
         } else {
             setBuyError('');
         }
-        return success;
+        return result.success;
     };
 
     const quickTradeHistory = getRecentTradesForSymbol(primarySymbol, 4);

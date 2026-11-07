@@ -20,7 +20,7 @@ cp .env.example .env
 
 2. (Optional) Update `.env` with your preferences. The defaults work out of the box.
 
-For persistent signed-in trading state, set `DATABASE_URL`. When PostgreSQL is unavailable, local development uses the ignored `SIMULATION_DATA_FILE` fallback (default: `backend/data/simulation-state.json`).
+For persistent signed-in trading state, set `DATABASE_URL`, then run `npm run migrate`. PostgreSQL is required for authoritative trading operations.
 
 ### Running the Server
 
@@ -37,6 +37,20 @@ npm start
 The server will start on **http://localhost:5000**
 
 The API root at `GET /api` returns the active API groups and `GET /health` can be used as a deployment smoke check.
+
+### Database migrations
+
+```bash
+npm run migrate
+```
+
+Migrations are tracked in `schema_migrations`. The initial migration creates `users`, `wallets`, `assets`, `holdings`, `trades`, and `orders`. Existing `simulation_states` rows are preserved and safe UUID wallet rows are copied into the new schema; the legacy table is not dropped automatically.
+
+### Trading API
+
+- `GET /api/trading/state` - authenticated wallet and holdings
+- `GET /api/trading/history` - authenticated permanent trade history
+- `POST /api/trading/orders` - authenticated atomic BUY/SELL execution; send a unique `Idempotency-Key` header
 
 ## 📊 Data Sources
 

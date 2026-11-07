@@ -22,6 +22,7 @@ import { MarketProvider } from './context/MarketContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { CurrencyProvider } from './context/CurrencyContext';
 import { CoinLogoProvider } from './context/CoinLogoContext';
+import { WalletPortfolioProvider } from './context/WalletPortfolioContext';
 import { useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import { Loader } from 'lucide-react';
@@ -63,7 +64,8 @@ function App() {
           <ThemeProvider>
             <CoinLogoProvider>
               <CurrencyProvider>
-                <Router>
+                <WalletPortfolioProvider>
+                  <Router>
                   <ScrollToTop />
                   <div className="min-h-screen bg-primary text-text-main font-sans antialiased selection:bg-brand-500/20 transition-colors duration-300">
                     <AuthenticatedRedirect>
@@ -127,7 +129,8 @@ function App() {
                       </Routes>
                     </AuthenticatedRedirect>
                   </div>
-                </Router>
+                  </Router>
+                </WalletPortfolioProvider>
               </CurrencyProvider>
             </CoinLogoProvider>
           </ThemeProvider>
