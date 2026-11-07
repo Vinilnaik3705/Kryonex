@@ -10,7 +10,7 @@ const parser = new Parser({
 });
 
 const FEED_TIMEOUT_MS = 3500;
-const NEWS_CACHE_TTL = 60;
+const NEWS_CACHE_TTL = 600;
 let activeNewsRequest = null;
 
 /**
