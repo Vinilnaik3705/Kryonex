@@ -84,6 +84,7 @@ const MainLayout = ({ children }) => {
                             <div className="min-w-0">
                                 <p className="text-[10px] text-text-dim">Logged in as</p>
                                 <p className="font-bold text-[12px] truncate text-text-main">{user.name}</p>
+                                <p className="text-[10px] truncate text-text-dim">{user.email}</p>
                             </div>
                         </div>
                     )}
@@ -187,6 +188,7 @@ const MainLayout = ({ children }) => {
                                         <div className="min-w-0">
                                             <p className="text-[10px] text-text-dim">Logged in as</p>
                                             <p className="font-bold text-[12px] truncate text-text-main">{user.name}</p>
+                                            <p className="text-[10px] truncate text-text-dim">{user.email}</p>
                                         </div>
                                     </div>
                                 )}
