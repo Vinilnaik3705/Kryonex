@@ -20,7 +20,7 @@ const getAssetColor = (symbol) => {
 };
 
 export default function Portfolio() {
-    const { getHoldingsWithValues, calculatePortfolioValue, calculateTotalPnL, pricesUpdatedAt, isHydrating, pricesReady } = useWalletAndPortfolio();
+    const { getHoldingsWithValues, calculatePortfolioValue, calculateTotalPnL, pricesUpdatedAt, isHydrating, pricesReady, pricesLive } = useWalletAndPortfolio();
     const { currency, convert } = useCurrency();
     const [clock, setClock] = useState(0);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -90,6 +90,7 @@ export default function Portfolio() {
                                 </span>
                                 <span className="text-[11px] text-text-dim font-medium">Unrealized P/L</span>
                             </div>
+                            {!pricesLive && <p className="mt-2 text-[10px] font-semibold text-warning">Market price delayed</p>}
                         </div>
                     </div>
 

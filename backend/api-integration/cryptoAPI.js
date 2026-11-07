@@ -209,7 +209,7 @@ class CryptoAPI {
                 const fallback = FALLBACK_CRYPTO.find((item) => item.symbol === tradingPair);
                 if (fallback) {
                     console.warn(`[CryptoAPI] Serving fallback price for ${tradingPair}`);
-                    return { ...fallback, stale: true, timestamp: new Date().toISOString() };
+                    return { ...fallback, source: 'fallback', stale: true, timestamp: new Date().toISOString() };
                 }
 
                 if (status === 400) {
@@ -286,7 +286,7 @@ class CryptoAPI {
                     } else {
                         const fallback = FALLBACK_CRYPTO.find((item) => item.symbol === pair);
                         if (fallback) {
-                            result.push({ ...fallback, stale: true, timestamp: new Date().toISOString() });
+                            result.push({ ...fallback, source: 'fallback', stale: true, timestamp: new Date().toISOString() });
                             recovered++;
                         }
                     }

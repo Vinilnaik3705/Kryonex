@@ -1,5 +1,7 @@
 const { getPool } = require('../config/db');
+const cryptoAPI = require('../api-integration/cryptoAPI');
 const clientError = (message) => Object.assign(new Error(message), { statusCode: 400 });
+const ensuredUsers = new Set();
 
 const normalizeSymbol = (value) => {
     const raw = String(value || '').trim().toUpperCase();
@@ -31,13 +33,16 @@ const ensureUser = async (client, auth) => {
     const email = String(auth.email || `${auth.userId}@auth.invalid`).slice(0, 320);
     const name = auth.name ? String(auth.name).slice(0, 255) : null;
     await client.query(
-        `INSERT INTO users (id, name, email) VALUES ($1, $2, $3)
-         ON CONFLICT (id) DO UPDATE SET name = COALESCE(EXCLUDED.name, users.name), email = EXCLUDED.email, updated_at = NOW()`,
+        `WITH upserted_user AS (
+            INSERT INTO users (id, name, email) VALUES ($1, $2, $3)
+            ON CONFLICT (id) DO UPDATE SET name = COALESCE(EXCLUDED.name, users.name),
+                email = EXCLUDED.email, updated_at = NOW()
+            RETURNING id
+        )
+        INSERT INTO wallets (user_id)
+        SELECT id FROM upserted_user
+        ON CONFLICT (user_id) DO NOTHING`,
         [auth.userId, name, email]
-    );
-    await client.query(
-        `INSERT INTO wallets (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING`,
-        [auth.userId]
     );
 };
 
@@ -55,28 +60,18 @@ const ensureAsset = async (client, symbol, price, assetType = 'crypto') => {
 
 const toNumber = (value) => Number(value);
 
-const getState = async (auth) => {
+const getState = async (auth, db = getPool()) => {
     assertUuid(auth.userId);
-    const pool = getPool();
-    const accountClient = await pool.connect();
-    try {
-        await accountClient.query('BEGIN');
-        await ensureUser(accountClient, auth);
-        await accountClient.query('COMMIT');
-    } catch (error) {
-        await accountClient.query('ROLLBACK');
-        throw error;
-    } finally {
-        accountClient.release();
-    }
-    const wallet = await pool.query('SELECT balance, updated_at FROM wallets WHERE user_id = $1', [auth.userId]);
-    const holdings = await pool.query(
+    const [wallet, holdings] = await Promise.all([
+        db.query('SELECT balance, updated_at FROM wallets WHERE user_id = $1', [auth.userId]),
+        db.query(
         `SELECT h.id, a.symbol, a.name, a.asset_type AS type, h.quantity,
                 h.average_buy_price AS "buyPrice", a.current_price AS "currentPrice", h.updated_at
          FROM holdings h JOIN assets a ON a.id = h.asset_id
          WHERE h.user_id = $1 ORDER BY a.symbol`,
         [auth.userId]
-    );
+        ),
+    ]);
     const updatedAt = holdings.rows.reduce((latest, row) => Math.max(latest, Date.parse(row.updated_at)), Date.parse(wallet.rows[0]?.updated_at) || 0);
     return {
         walletBalance: wallet.rows[0] ? toNumber(wallet.rows[0].balance) : 100000,
@@ -111,17 +106,30 @@ const executeTrade = async ({ auth, symbol: inputSymbol, quantity, price, type, 
     const symbol = normalizeSymbol(inputSymbol);
     const normalizedType = String(type || '').toUpperCase();
     const numericQuantity = Number(quantity);
-    const numericPrice = Number(price);
     if (!['BUY', 'SELL'].includes(normalizedType)) throw clientError('Trade type must be BUY or SELL');
     if (!Number.isFinite(numericQuantity) || numericQuantity <= 0) throw clientError('Quantity must be positive');
-    if (!Number.isFinite(numericPrice) || numericPrice <= 0) throw clientError('Price must be positive');
     if (!idempotencyKey || String(idempotencyKey).length > 255) throw clientError('A valid Idempotency-Key is required');
+    let marketPrice;
+    try {
+        marketPrice = await cryptoAPI.getPrice(symbol);
+    } catch (error) {
+        throw Object.assign(new Error('Live market price is unavailable'), { statusCode: 503, cause: error });
+    }
+    const executedPrice = Number(marketPrice?.price);
+    const priceTimestamp = Date.parse(marketPrice?.timestamp || '');
+    if (!Number.isFinite(executedPrice) || executedPrice <= 0 || marketPrice?.stale || marketPrice?.source === 'fallback'
+        || !priceTimestamp || Date.now() - priceTimestamp > 30000) {
+        throw Object.assign(new Error('Live market price is unavailable or stale'), { statusCode: 503 });
+    }
 
     const pool = getPool();
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
-        await ensureUser(client, auth);
+        const needsUserEnsure = !ensuredUsers.has(auth.userId);
+        if (needsUserEnsure) {
+            await ensureUser(client, auth);
+        }
 
         const existing = await client.query(
             `SELECT id, status FROM orders WHERE user_id = $1 AND idempotency_key = $2 FOR UPDATE`,
@@ -129,16 +137,16 @@ const executeTrade = async ({ auth, symbol: inputSymbol, quantity, price, type, 
         );
         if (existing.rows[0]) {
             await client.query('ROLLBACK');
-            return { orderId: existing.rows[0].id, status: existing.rows[0].status, idempotent: true, ...(await getState(auth)) };
+            return { orderId: existing.rows[0].id, status: existing.rows[0].status, idempotent: true, ...(await getState(auth, client)) };
         }
 
-        const asset = await ensureAsset(client, symbol, numericPrice, assetType);
+        const asset = await ensureAsset(client, symbol, executedPrice, assetType);
         const order = await client.query(
             `INSERT INTO orders (user_id, asset_id, type, quantity, status, idempotency_key)
              VALUES ($1, $2, $3, $4, 'PENDING', $5) RETURNING id`,
             [auth.userId, asset.id, normalizedType, numericQuantity, idempotencyKey]
         );
-        const total = numericQuantity * numericPrice;
+        const total = numericQuantity * executedPrice;
 
         const wallet = await client.query('SELECT id, balance FROM wallets WHERE user_id = $1 FOR UPDATE', [auth.userId]);
         if (normalizedType === 'BUY') {
@@ -153,7 +161,7 @@ const executeTrade = async ({ auth, symbol: inputSymbol, quantity, price, type, 
                  ON CONFLICT (user_id, asset_id) DO UPDATE SET
                    average_buy_price = ((holdings.quantity * holdings.average_buy_price) + ($3 * $4)) / (holdings.quantity + $3),
                    quantity = holdings.quantity + $3, updated_at = NOW()`,
-                [auth.userId, asset.id, numericQuantity, numericPrice]
+                [auth.userId, asset.id, numericQuantity, executedPrice]
             );
         } else {
             const holding = await client.query(
@@ -181,14 +189,20 @@ const executeTrade = async ({ auth, symbol: inputSymbol, quantity, price, type, 
         await client.query(
             `INSERT INTO trades (user_id, asset_id, type, quantity, price, total)
              VALUES ($1, $2, $3, $4, $5, $6)`,
-            [auth.userId, asset.id, normalizedType, numericQuantity, numericPrice, total.toFixed(2)]
+            [auth.userId, asset.id, normalizedType, numericQuantity, executedPrice, total.toFixed(2)]
         );
         await client.query(
             `UPDATE orders SET status = 'COMPLETED', updated_at = NOW() WHERE id = $1`,
             [order.rows[0].id]
         );
         await client.query('COMMIT');
-        return { orderId: order.rows[0].id, status: 'COMPLETED', ...(await getState(auth)) };
+        if (needsUserEnsure) ensuredUsers.add(auth.userId);
+        try {
+            return { orderId: order.rows[0].id, status: 'COMPLETED', executedPrice, ...(await getState(auth, client)) };
+        } catch (stateError) {
+            console.error(`Trade committed but state refresh failed: ${stateError.message}`);
+            return { orderId: order.rows[0].id, status: 'COMPLETED', executedPrice };
+        }
     } catch (error) {
         await client.query('ROLLBACK');
         throw error;

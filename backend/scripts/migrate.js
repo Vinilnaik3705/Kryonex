@@ -8,7 +8,7 @@ const run = async () => {
 
     const client = new Client({
         connectionString: connectionString.trim(),
-        connectionTimeoutMillis: Number(process.env.DB_CONNECTION_TIMEOUT_MS || 5000),
+        connectionTimeoutMillis: Number(process.env.DB_CONNECTION_TIMEOUT_MS || 3000),
         ssl: /supabase\.co|neon\.tech|railway\.app/i.test(connectionString)
             ? { rejectUnauthorized: false }
             : undefined,

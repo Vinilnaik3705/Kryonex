@@ -380,7 +380,7 @@ export default function Trade() {
     const { assetId } = useParams();
     const { user } = useAuth();
     const { currency, convert } = useCurrency();
-    const { buyAsset, sellAsset, walletBalance, getRecentTradesForSymbol } = useWalletAndPortfolio();
+    const { buyAsset, sellAsset, walletBalance, getRecentTradesForSymbol, stateError, retryState, pricesLive } = useWalletAndPortfolio();
     const [layout, setLayout] = useState('single'); // single, split-h, split-v, quad
     const [quantity, setQuantity] = useState('');
     const [livePrice, setLivePrice] = useState(null);
@@ -539,14 +539,13 @@ export default function Trade() {
         }
 
         const currentAsset = configs[0].assetId;
-        const totalCost = currentPrice * qty;
-
         const result = await buyAsset(currentAsset, qty, currentPrice, 'crypto');
 
         if (result.success) {
+            const executedPrice = Number(result.data?.executedPrice || currentPrice);
             // Success - clear form and show feedback
             setQuantity('');
-            alert(`✓ Successfully purchased ${qty} ${currentAsset.toUpperCase()} @ ${formatAmount(convert(currentPrice), currency)}\nWallet balance reduced by ${formatAmount(convert(totalCost), currency)}`);
+            alert(`✓ Successfully purchased ${qty} ${currentAsset.toUpperCase()} @ ${formatAmount(convert(executedPrice), currency)}\nWallet balance updated by the server`);
         } else {
             setBuyError(result.error || 'Transaction failed. Please try again.');
         }
@@ -583,6 +582,13 @@ export default function Trade() {
     return (
         <MainLayout>
             <div className="space-y-6 max-w-[1600px] mx-auto">
+                {stateError && (
+                    <div className="flex items-center justify-between gap-3 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">
+                        <span>{stateError}</span>
+                        <button onClick={() => retryState().catch(() => {})} className="rounded-lg border border-danger/30 px-3 py-1.5 font-semibold hover:bg-danger/10">Retry</button>
+                    </div>
+                )}
+                {!pricesLive && <p className="text-[11px] font-semibold text-warning">Market price delayed; trade execution uses the server price.</p>}
                 {/* Header Controls */}
                 <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                     <div className="flex items-center gap-4">

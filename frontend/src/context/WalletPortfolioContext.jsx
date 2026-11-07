@@ -121,7 +121,16 @@ const subscribeToPricePoller = (symbols, onSuccess, onFailure) => {
             pricePoller.failureDelay = PRICE_POLL_INTERVAL;
         }
     };
+
 };
+
+if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && pricePoller.subscribers.size && !pricePoller.inFlight && !pricePoller.timer) {
+            runPricePoll();
+        }
+    });
+}
 
 export const WalletPortfolioProvider = ({ children }) => {
     const { user, getToken } = useAuth();
@@ -131,6 +140,7 @@ export const WalletPortfolioProvider = ({ children }) => {
     const [tradeHistory, setTradeHistory] = useState([]);
     const [livePrices, setLivePrices] = useState({});
     const [pricesUpdatedAt, setPricesUpdatedAt] = useState(0);
+    const [pricesLive, setPricesLive] = useState(false);
     const [isHydrating, setIsHydrating] = useState(true);
     const [stateError, setStateError] = useState('');
     const localUpdatedAtRef = useRef(initial.updatedAt);
@@ -171,8 +181,8 @@ export const WalletPortfolioProvider = ({ children }) => {
         const headers = await getAuthHeaders();
         if (!headers.Authorization) return;
         const [stateResponse, historyResponse] = await Promise.all([
-            apiClient.get('/trading/state', { headers }),
-            apiClient.get('/trading/history', { headers }),
+            apiClient.get('/trading/state', { headers, timeout: 15000 }),
+            apiClient.get('/trading/history', { headers, timeout: 15000 }),
         ]);
         const state = stateResponse.data?.data || {};
         const remoteUpdatedAt = Date.parse(state.updatedAt || state.lastSyncedAt || '') || Date.now();
@@ -183,19 +193,34 @@ export const WalletPortfolioProvider = ({ children }) => {
         setStateError('');
     }, [applyState, getAuthHeaders]);
 
+    const retryState = useCallback(async () => {
+        let lastError;
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+            try {
+                await refreshState();
+                return true;
+            } catch (error) {
+                lastError = error;
+                if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 1000 * (2 ** attempt)));
+            }
+        }
+        setStateError(lastError?.response?.data?.error?.message || lastError?.response?.data?.error || 'Unable to load trading account');
+        throw lastError;
+    }, [refreshState]);
+
     useEffect(() => {
         if (!userId) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
             setIsHydrating(false);
             return undefined;
         }
         const local = readLocalState(userId);
         localUpdatedAtRef.current = local.updatedAt;
+        setPricesLive(false);
         setWalletBalance(local.walletBalance);
         setPortfolioHoldings(local.portfolioHoldings.map(toHolding));
         setIsHydrating(true);
         let cancelled = false;
-        refreshState().catch((error) => {
+        retryState().catch((error) => {
             if (!cancelled) {
                 setStateError(error?.response?.data?.error?.message || error?.response?.data?.error || 'Unable to load trading account');
                 console.error('Failed to load trading account:', error);
@@ -204,23 +229,44 @@ export const WalletPortfolioProvider = ({ children }) => {
             if (!cancelled) setIsHydrating(false);
         });
         return () => { cancelled = true; };
-    }, [userId, refreshState]);
+    }, [userId, retryState]);
 
     const submitTrade = useCallback(async (symbol, quantity, price, type) => {
         try {
             const headers = await getAuthHeaders();
             if (!headers.Authorization) return { success: false, error: 'Please sign in to trade.' };
-            const response = await apiClient.post('/trading/orders', { symbol, quantity, price, type, assetType: 'crypto' }, {
-                headers: { ...headers, 'Idempotency-Key': makeIdempotencyKey() },
-            });
-            await refreshState();
-            return { success: true, data: response.data?.data };
+            const idempotencyKey = makeIdempotencyKey();
+            let response;
+            for (let attempt = 0; attempt < 2; attempt += 1) {
+                try {
+                    response = await apiClient.post('/trading/orders', { symbol, quantity, price, type, assetType: 'crypto' }, {
+                        headers: { ...headers, 'Idempotency-Key': idempotencyKey },
+                        timeout: 15000,
+                    });
+                    break;
+                } catch (error) {
+                    const networkFailure = !error.response && ['ECONNABORTED', 'ERR_NETWORK', 'ETIMEDOUT'].includes(error.code);
+                    if (!networkFailure) throw error;
+                    if (attempt === 1) {
+                        try {
+                            await refreshState();
+                            return { success: true, recovered: true };
+                        } catch {
+                            throw error;
+                        }
+                    }
+                }
+            }
+            const result = response?.data?.data || {};
+            applyState(result, Date.parse(result.updatedAt || '') || Date.now());
+            refreshState().catch((error) => console.warn('Trade history refresh failed:', error?.message || error));
+            return { success: true, data: result };
         } catch (error) {
             const message = error?.response?.data?.error?.message || error?.response?.data?.error || 'Trade failed. Please try again.';
             setStateError(message);
             return { success: false, error: message };
         }
-    }, [getAuthHeaders, refreshState]);
+    }, [applyState, getAuthHeaders, refreshState]);
 
     const portfolioSymbolsKey = [...new Set(portfolioHoldings.map((holding) => normalizeDisplaySymbol(holding.symbol)).filter(Boolean))].join(',');
     useEffect(() => {
@@ -231,6 +277,7 @@ export const WalletPortfolioProvider = ({ children }) => {
                 Object.assign(lastKnownPricesRef.current, prices);
                 setLivePrices({ ...lastKnownPricesRef.current });
                 setPricesUpdatedAt(Date.now());
+                setPricesLive(true);
             },
             () => setLivePrices({ ...lastKnownPricesRef.current }),
         );
@@ -255,8 +302,8 @@ export const WalletPortfolioProvider = ({ children }) => {
         .slice(0, limit)
         .map((trade) => ({ ...trade, type: trade.type.toLowerCase() })), [tradeHistory]);
     const value = {
-        walletBalance, portfolioHoldings, livePrices, pricesUpdatedAt, pricesReady, isHydrating, stateError,
-        refreshState, buyAsset: (symbol, quantity, price) => submitTrade(symbol, quantity, price, 'BUY'),
+        walletBalance, portfolioHoldings, livePrices, pricesUpdatedAt, pricesReady, pricesLive, isHydrating, stateError,
+        refreshState, retryState, buyAsset: (symbol, quantity, price) => submitTrade(symbol, quantity, price, 'BUY'),
         sellAsset: (symbol, quantity, price) => submitTrade(symbol, quantity, price, 'SELL'),
         calculatePortfolioValue, calculateTotalPnL, calculateAssetPnL, getHoldingsWithValues, getRecentTradesForSymbol,
     };

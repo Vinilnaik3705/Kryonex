@@ -47,7 +47,7 @@ function getTimeAgo(timestamp) {
 
 export default function Dashboard() {
     const navigate = useNavigate();
-    const { walletBalance, calculatePortfolioValue, calculateTotalPnL, getHoldingsWithValues, isHydrating, pricesReady } = useWalletAndPortfolio();
+    const { walletBalance, calculatePortfolioValue, calculateTotalPnL, getHoldingsWithValues, isHydrating, pricesReady, pricesLive, stateError, retryState } = useWalletAndPortfolio();
         const { currency, convert } = useCurrency();
     const { data: marketData = [], isLoading: loading } = useQuery({
         queryKey: ['dashboard-market'],
@@ -89,6 +89,12 @@ export default function Dashboard() {
     return (
         <MainLayout>
             <div className="space-y-5">
+            {stateError && (
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">
+                    <span>{stateError}</span>
+                    <button onClick={() => retryState().catch(() => {})} className="rounded-lg border border-danger/30 px-3 py-1.5 font-semibold hover:bg-danger/10">Retry</button>
+                </div>
+            )}
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 px-4 sm:px-0">
                     <div>
@@ -123,7 +129,7 @@ export default function Dashboard() {
                         <div className="text-[22px] font-extrabold text-text-main font-mono price-mono tracking-tight">
                             {metricsReady ? formatAmount(convert(portfolioValue), currency) : '—'}
                         </div>
-                        <div className="text-[11px] text-success mt-1 font-bold">Holdings active</div>
+                        <div className="text-[11px] text-success mt-1 font-bold">{pricesLive ? 'Holdings active' : 'Prices delayed'}</div>
                     </div>
 
                     {/* TOTAL P&L */}

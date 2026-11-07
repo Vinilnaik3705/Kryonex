@@ -5,8 +5,8 @@ const tradingService = require('../services/tradingService');
 
 const router = express.Router();
 const requireDatabase = async (req, res, next) => {
-    await connectDB();
-    if (!isDatabaseConnected()) {
+    const connected = await connectDB();
+    if (!connected || !isDatabaseConnected()) {
         return res.status(503).json({ success: false, error: 'Persistent trading database is unavailable' });
     }
     return next();
